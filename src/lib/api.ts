@@ -243,20 +243,23 @@ export const ContentManagementMediaApi = {
 
 
 export interface CategoryItem {
+  itemIndex?: number;
+  imageUrl?: string | null;
   name: string;
   slug: string;
 }
 
 export interface Category {
   listOfCategories: CategoryItem[];
+  totalItems?: number;
 }
 
-export async function fetchCategories(): Promise<Category[]> {
+export async function fetchCategories(): Promise<Category> {
   const res = await fetch(`${API_BASE_URL}api/v1/articles/content/categories`);
 
   if (!res.ok) throw new Error("Failed to load categories");
 
   const json = await res.json();
-  return json.data as Category[];
+  return json.data as Category;
 }
 

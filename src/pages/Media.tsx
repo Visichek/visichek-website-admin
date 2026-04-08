@@ -12,15 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -55,8 +47,9 @@ import { toast } from "sonner";
 
 // Custom components
 import AnimatedContent from "@/components/AnimatedContent";
-import ElectricBorder from "@/components/ElectricBorder";
 import BlurText from "@/components/BlurText";
+import AdminAmbientBackground from "@/components/backgrounds/AdminAmbientBackground";
+import { FluidGlassButton } from "@/components/ui/fluid-glass-button";
 
 // --- Types ---
 interface MediaItem {
@@ -289,10 +282,10 @@ export default function MediaDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-background pb-32 relative">
+        <div className="admin-shell min-h-screen bg-background pb-32 relative">
+            <AdminAmbientBackground variant="media" />
             
-            {/* --- Header --- */}
-            <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border">
+            <header className="ambient-divider sticky top-0 z-30 border-b border-white/45 bg-white/55 backdrop-blur-xl">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-4 sm:gap-8">
                         <h1 className="font-bold text-lg md:text-xl hidden sm:block">
@@ -311,7 +304,7 @@ export default function MediaDashboard() {
                             <Button 
                                 variant="secondary" 
                                 size="sm" 
-                                className="gap-2 shadow-sm bg-background text-foreground text-xs sm:text-sm px-2 sm:px-4"
+                                className="gap-2 border border-white/70 bg-background text-foreground text-xs sm:text-sm px-2 sm:px-4"
                             >
                                 <Film className="h-3 w-3 sm:h-4 sm:w-4" /> Media
                             </Button>
@@ -329,26 +322,26 @@ export default function MediaDashboard() {
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-6 space-y-6">
+            <main className="relative z-10 container mx-auto px-4 py-6 space-y-6">
 
                 {/* --- Toolbar --- */}
-                <div className="flex flex-col gap-4">
+                <div className="glass-panel flex flex-col gap-4 rounded-[1.5rem] p-3 sm:p-4">
                     <div className="relative w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                             placeholder="Search files..." 
-                            className="pl-9 w-full bg-card"
+                            className="pl-9 w-full border-white/60 bg-white/70"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 bg-card p-2 rounded-lg border">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/40 bg-white/30 p-2">
                         <div className="flex flex-wrap items-center gap-2 flex-1">
                             <Filter className="h-4 w-4 text-muted-foreground mr-1 hidden sm:block" />
                             
                             <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
-                                <SelectTrigger className="h-8 w-[110px] text-xs">
+                                <SelectTrigger className="h-8 w-[110px] border-white/60 bg-white/70 text-xs">
                                     <SelectValue placeholder="Type" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -359,7 +352,7 @@ export default function MediaDashboard() {
                             </Select>
 
                             <Select value={filterCategory} onValueChange={setFilterCategory}>
-                                <SelectTrigger className="h-8 w-[130px] text-xs">
+                                <SelectTrigger className="h-8 w-[130px] border-white/60 bg-white/70 text-xs">
                                     <SelectValue placeholder="Category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -369,7 +362,7 @@ export default function MediaDashboard() {
                             </Select>
                         </div>
 
-                        <div className="flex border rounded-md overflow-hidden">
+                        <div className="flex overflow-hidden rounded-xl border border-white/75 bg-white/70">
                             <button 
                                 onClick={() => setViewMode('grid')}
                                 className={`p-2 ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'bg-background text-muted-foreground'}`}
@@ -443,7 +436,7 @@ export default function MediaDashboard() {
 
                 {/* --- Load More --- */}
                 <div className="flex justify-center pt-4">
-                        {hasMoreServerData ? (
+                {hasMoreServerData ? (
                             <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={isLoading}>
                                 {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                                 Load More
@@ -459,20 +452,10 @@ export default function MediaDashboard() {
 {selectedIds.size === 0 && (
     <div className="fixed z-50 bottom-6 right-6 animate-in fade-in zoom-in duration-300">
         <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            
-            {/* FIX APPLIED: 
-               1. Removed <DialogTrigger> 
-               2. Added onClick={() => setIsUploadOpen(true)} to the Button 
-            */}
-            <ElectricBorder className="rounded-full shadow-lg hover:shadow-xl cursor-pointer">
-                <Button 
-                    className="rounded-full h-12 sm:h-14 px-4 sm:px-6 flex items-center gap-2"
-                    onClick={() => setIsUploadOpen(true)}
-                >
+            <FluidGlassButton className="rounded-full px-4 sm:px-6" size="lg" glow onClick={() => setIsUploadOpen(true)}>
                     <UploadCloud className="h-5 w-5" />
                     <span className="font-semibold text-sm sm:text-base">Upload Media</span>
-                </Button>
-            </ElectricBorder>
+            </FluidGlassButton>
 
             <DialogContent>
                 <DialogHeader>
@@ -523,8 +506,7 @@ export default function MediaDashboard() {
             {/* --- Floating Action Bar (For Selection) --- */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-6 inset-x-0 px-4 flex justify-center z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
-                    <ElectricBorder className="w-full max-w-md rounded-xl shadow-2xl">
-                        <div className="bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 border text-card-foreground p-3 rounded-xl flex items-center justify-between">
+                        <div className="glass-panel-strong flex w-full max-w-md items-center justify-between rounded-[1.35rem] p-3 text-card-foreground">
                             <div className="flex items-center gap-3">
                                 <Badge variant="default" className="h-7 px-3">{selectedIds.size}</Badge>
                                 <span className="text-sm font-medium hidden sm:inline">selected</span>
@@ -541,7 +523,6 @@ export default function MediaDashboard() {
                                 <Trash2 className="h-4 w-4" /> Delete
                             </Button>
                         </div>
-                    </ElectricBorder>
                 </div>
             )}
 
@@ -603,7 +584,7 @@ function MediaGridItem({ item, isSelected, onToggle, onCopy, categoryName }: any
 
                 {/* Selection Checkbox */}
                 <div className={`absolute top-2 left-2 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                    <div className={`rounded bg-background/90 text-primary shadow-sm ${isSelected ? 'block' : ''}`}>
+                    <div className={`rounded border border-white/70 bg-background/90 text-primary ${isSelected ? 'block' : ''}`}>
                         {isSelected ? <CheckSquare className="h-6 w-6" /> : <Square className="h-6 w-6 text-muted-foreground" />}
                     </div>
                 </div>

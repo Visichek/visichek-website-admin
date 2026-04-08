@@ -61,12 +61,10 @@ export function BlogSettingsDialog({
   const { categories, isLoading } = useCategories();
 
   React.useEffect(() => {
-    // Optional: Auto-select first category if none is selected and lists are loaded
     if (!category && !isLoading && categories.length > 0) {
-       // setCategory(categories[0]); // Uncomment if you want auto-select behavior
+       setCategory(categories[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories, isLoading]);
+  }, [category, categories, isLoading, setCategory]);
 
   return (
     <Dialog>
@@ -99,17 +97,15 @@ export function BlogSettingsDialog({
               <Input
                 value={authorAffiliation}
                 onChange={(e) => setAuthorAffiliation(e.target.value)}
-                placeholder="Sports Journalist"
+                placeholder="Occupation"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                // ✅ FIX 3: Safe access to slug
-                value={category?.slug ?? ""}
+                value={category?.slug}
                 onValueChange={(slug) => {
-                  // ✅ FIX 4: Find the correct CategoryItem object
                   const found = categories.find((c) => c.slug === slug) ?? null;
                   setCategory(found);
                 }}

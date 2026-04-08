@@ -23,7 +23,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 // Assuming blogApi methods return the raw data object from the response.
-import { blogApi, fetchCategories } from "@/lib/api"; 
+import { blogApi, fetchCategories, type Category } from "@/lib/api"; 
 import { useAuth } from "@/contexts/AuthContext";
 import {
     PlusCircle,
@@ -45,8 +45,9 @@ import {
 import { toast } from "sonner";
 
 import AnimatedContent from "@/components/AnimatedContent";
-import ElectricBorder from "@/components/ElectricBorder";
 import BlurText from "@/components/BlurText";
+import AdminAmbientBackground from "@/components/backgrounds/AdminAmbientBackground";
+import { FluidGlassButton } from "@/components/ui/fluid-glass-button";
 
 // --- Types ---
 
@@ -55,12 +56,6 @@ interface CategoryItem {
     itemIndex: number;
     name: string;
     slug: string;
-}
-
-// Type for the full Category List API response (used for populating the filter dropdown)
-interface CategoryData {
-    listOfCategories: CategoryItem[];
-    totalItems: number;
 }
 
 // 💥 CRITICAL FIX: The Blog's category property only contains a single category object.
@@ -85,7 +80,7 @@ interface Blog {
 // --- Component Start ---
 export default function Dashboard() {
     // Data State
-    const [categories, setCategories] = useState<CategoryData | null>(null);
+    const [categories, setCategories] = useState<Category | null>(null);
     const allCategoryItems = categories?.listOfCategories ?? [];
     const [categoriesLoading, setCategoriesLoading] = useState(true);
     const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -135,10 +130,9 @@ export default function Dashboard() {
         let mounted = true;
         setCategoriesLoading(true);
         fetchCategories()
-            .then((data: any) => {
+            .then((data) => {
                 if (!mounted) return;
-                // ✅ Fix from previous iteration is still valid: Access 'data' property
-                setCategories(data?.data ?? null); 
+                setCategories(data ?? null); 
             })
             .catch((err) => {
                 console.error("Failed to fetch categories", err);
@@ -365,7 +359,7 @@ export default function Dashboard() {
                     return (
                         <AnimatedContent key={blog._id}>
                             <Card 
-                                className={`transition-all duration-200 hover:shadow-md group border-l-4 ${isSelected ? 'border-l-primary bg-primary/5' : 'border-l-transparent hover:border-l-primary/50'}`}
+                                className={`transition-all duration-200 group border-l-4 ${isSelected ? 'border-l-primary bg-primary/5' : 'border-l-transparent hover:border-l-primary/50 hover:bg-white/45'}`}
                             >
                                 <CardContent className="p-3 sm:p-6">
                                     <div className="flex items-start gap-3 sm:gap-4">
@@ -451,10 +445,10 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-background relative pb-32">
+        <div className="admin-shell min-h-screen bg-background relative pb-32">
+            <AdminAmbientBackground variant="dashboard" />
             
-            {/* HEADER (Unchanged) */}
-            <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-sm">
+            <header className="ambient-divider sticky top-0 z-30 border-b border-white/45 bg-white/55 backdrop-blur-xl">
                 <div className="container mx-auto px-4">
                     <div className="flex h-16 items-center justify-between">
                         <div className="flex items-center gap-4 sm:gap-8">
@@ -462,7 +456,7 @@ export default function Dashboard() {
                                 <BlurText text="Article Library" />
                             </h1>
                             <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
-                                <Button variant="secondary" size="sm" className="gap-2 shadow-sm bg-background text-foreground text-xs sm:text-sm px-2 sm:px-4">
+                                <Button variant="secondary" size="sm" className="gap-2 border border-white/70 bg-background text-foreground text-xs sm:text-sm px-2 sm:px-4">
                                     <FileText className="h-3 w-3 sm:h-4 sm:w-4" /> Articles
                                 </Button>
                                 <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground text-xs sm:text-sm px-2 sm:px-4" onClick={() => navigate('/admin/videos')}>
@@ -482,20 +476,14 @@ export default function Dashboard() {
                 </div>
             </header>
             
-            <main className="container mx-auto px-3 sm:px-4 py-6">
+            <main className="relative z-10 container mx-auto px-3 sm:px-4 py-6">
                 
-                {/* Create Button (Unchanged) */}
                 {selectedIds.size === 0 && (
                     <div className="fixed z-50 bottom-6 right-6 animate-in fade-in zoom-in duration-300">
-                        <ElectricBorder className="rounded-full">
-                            <Button
-                                className="flex items-center gap-2 bg-primary text-primary-foreground shadow-lg hover:shadow-xl rounded-full px-4 sm:px-6 h-12 sm:h-14"
-                                onClick={() => navigate("/admin/editor/new")}
-                            >
-                                <PlusCircle className="h-5 w-5" />
-                                <span className="font-semibold text-sm sm:text-base">New Article</span>
-                            </Button>
-                        </ElectricBorder>
+                        <FluidGlassButton className="rounded-full px-4 sm:px-6" glow size="lg" onClick={() => navigate("/admin/editor/new")}>
+                            <PlusCircle className="h-5 w-5" />
+                            <span className="font-semibold text-sm sm:text-base">New Article</span>
+                        </FluidGlassButton>
                     </div>
                 )}
 
@@ -508,6 +496,7 @@ export default function Dashboard() {
                     <div className="space-y-4 sm:space-y-6">
                         
                         {/* FILTERS & SORT */}
+                        <div className="glass-panel rounded-[1.5rem] p-3 sm:p-4">
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
                             {/* Search (Unchanged) */}
                             <div className="md:col-span-5 relative">
@@ -516,14 +505,14 @@ export default function Dashboard() {
                                     placeholder="Search..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full"
+                                    className="pl-9 w-full border-white/60 bg-white/70"
                                 />
                             </div>
                             {/* Filters & Sort */}
                             <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                                 {/* Category Filter (Unchanged, uses allCategoryItems list) */}
                                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder="Category" /></SelectTrigger>
+                                    <SelectTrigger className="w-full border-white/60 bg-white/70"><SelectValue placeholder="Category" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Categories</SelectItem>
                                         {allCategoryItems.map((cat) => (
@@ -535,7 +524,7 @@ export default function Dashboard() {
                                 </Select>
                                 {/* Type Filter (Unchanged) */}
                                 <Select value={selectedType} onValueChange={setSelectedType}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder="Type" /></SelectTrigger>
+                                    <SelectTrigger className="w-full border-white/60 bg-white/70"><SelectValue placeholder="Type" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Types</SelectItem>
                                         <SelectItem value="normal">Normal</SelectItem>
@@ -546,7 +535,7 @@ export default function Dashboard() {
                                 </Select>
                                 {/* Sorting Select (Unchanged) */}
                                 <Select value={sortCriteria} onValueChange={(v: any) => setSortCriteria(v)}>
-                                    <SelectTrigger className="w-full gap-1">
+                                    <SelectTrigger className="w-full gap-1 border-white/60 bg-white/70">
                                         <ArrowDownWideNarrow className="h-4 w-4 text-muted-foreground" />
                                         <SelectValue />
                                     </SelectTrigger>
@@ -562,7 +551,7 @@ export default function Dashboard() {
                                     value={String(itemsPerPage)} 
                                     onValueChange={(v) => setItemsPerPage(Number(v))}
                                 >
-                                    <SelectTrigger className="w-full">
+                                    <SelectTrigger className="w-full border-white/60 bg-white/70">
                                         <SelectValue placeholder="Rows" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -573,6 +562,7 @@ export default function Dashboard() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
                         </div>
 
                         {/* Tabs (Unchanged) */}
@@ -626,8 +616,7 @@ export default function Dashboard() {
             {/* MASS ACTIONS FLOATING BAR (Unchanged) */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] sm:w-[90%] max-w-2xl animate-in slide-in-from-bottom-10 fade-in">
-                    <ElectricBorder className="rounded-xl bg-card text-card-foreground shadow-2xl">
-                        <div className="flex items-center justify-between p-3 sm:p-4 bg-card rounded-xl border">
+                        <div className="glass-panel-strong flex items-center justify-between rounded-[1.35rem] p-3 sm:p-4 text-card-foreground">
                             <div className="flex items-center gap-2 sm:gap-4">
                                 <Badge variant="secondary" className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
                                     {selectedIds.size} <span className="hidden sm:inline ml-1">Selected</span>
@@ -669,7 +658,6 @@ export default function Dashboard() {
                                 </Button>
                             </div>
                         </div>
-                    </ElectricBorder>
                 </div>
             )}
 

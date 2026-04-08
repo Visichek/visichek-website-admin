@@ -12,10 +12,9 @@ export default function useCategories() {
     setIsLoading(true);
 
     fetchCategories()
-      .then((response: any) => {
+      .then((response) => {
         if (!mounted) return;
-        // Safety check for the data path
-        const list = response?.data?.listOfCategories ?? [];
+        const list = response?.listOfCategories ?? [];
         setCategories(list);
       })
       .catch((err) => {

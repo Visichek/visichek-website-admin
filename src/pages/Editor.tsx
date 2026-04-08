@@ -4,6 +4,7 @@ import { useDebounce } from "react-use";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { BlockNoteEditor } from "@/components/BlockNoteEditor";
 import { BlogSettingsDialog, BlogType } from "@/components/BlogSettingsDialog";
 import { blogApi,CategoryItem } from "@/lib/api";
@@ -16,6 +17,8 @@ import { toast } from "sonner";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ✅ FIX: Import corrected type
 import useCategories from "@/hooks/useCategories";
@@ -51,6 +54,7 @@ export default function Editor() {
     const [hasLoadedContent, setHasLoadedContent] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [didLoadArticleData, setDidLoadArticleData] = useState(false);
+    const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
 
     // -----------------------------------------------------------------------
     // LOCAL STORAGE LOGIC
@@ -197,15 +201,39 @@ export default function Editor() {
     // -----------------------------------------------------------------------
     // SAVE FUNCTION
     // -----------------------------------------------------------------------
+    const resolveCategoryForSave = useCallback((): CategoryItem | null => {
+        if (category) {
+            return category;
+        }
+
+        if (categories.length > 0) {
+            return categories[0];
+        }
+
+        return null;
+    }, [category, categories]);
+
     const saveArticle = useCallback(async (overrideStatus?: "draft" | "published", overrideBlogType?: BlogType) => {
         if (isInitialLoad) return;
+        if (categoriesLoading) return;
+
+        const categoryForSave = resolveCategoryForSave();
+        if (!categoryForSave) {
+            setSaveStatus("error");
+            return;
+        }
+
+        if (categoryForSave !== category) {
+            setCategory(categoryForSave);
+        }
+
         saveToLocalStorage();
         setSaveStatus("saving");
 
         const payload = {
             title,
             author: { name: authorName, avatarUrl: authorAvatar, affiliation: authorAffiliation },
-            category, // Sends the full object { itemIndex, name, slug }
+            category: categoryForSave,
             featureImage: { url: featureImageUrl, altText: title || "Feature image" },
             state: overrideStatus || status,
             currentPageBody: blogBlocks,
@@ -242,9 +270,12 @@ export default function Editor() {
             const msg = error?.response?.data?.detail || "Failed to save";
             toast.error(msg);
         }
-    }, [articleId, title, authorName, authorAvatar, authorAffiliation, category, featureImageUrl, status, blogBlocks, blogType, saveToLocalStorage, isInitialLoad, navigate, getLocalStorageKey]);
+    }, [articleId, title, authorName, authorAvatar, authorAffiliation, category, featureImageUrl, status, blogBlocks, blogType, saveToLocalStorage, isInitialLoad, navigate, getLocalStorageKey, categoriesLoading, resolveCategoryForSave]);
 
-    useDebounce(() => { if (!isInitialLoad) saveArticle(); }, 2000, [isInitialLoad, saveArticle]);
+    useDebounce(() => {
+        if (isInitialLoad || categoriesLoading || !resolveCategoryForSave()) return;
+        saveArticle();
+    }, 2000, [isInitialLoad, categoriesLoading, resolveCategoryForSave, saveArticle]);
 
     const handlePublish = () => {
         setStatus("published");
@@ -341,8 +372,17 @@ export default function Editor() {
                     </div>
 
                     <div className="flex px-14 items-center gap-3 text-sm text-muted-foreground pb-2">
-                        {/* ✅ FIX: Render name safely */}
-                        {category && <Badge variant="secondary" className="rounded-sm font-normal">{category.name}</Badge>}
+                        {category && (
+                            <button
+                                type="button"
+                                onClick={() => setIsCategoryDialogOpen(true)}
+                                className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <Badge variant="secondary" className="cursor-pointer rounded-sm font-normal hover:bg-secondary/80">
+                                    {category.name}
+                                </Badge>
+                            </button>
+                        )}
                         {authorName && <span>by {authorName}</span>}
                     </div>
 
@@ -369,6 +409,38 @@ export default function Editor() {
                     </div>
                 </div>
             </main>
+
+            <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Change category</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Category</Label>
+                            <Select
+                                value={category?.slug}
+                                onValueChange={(slug) => {
+                                    const selected = categories.find((item) => item.slug === slug) ?? null;
+                                    setCategory(selected);
+                                    setIsCategoryDialogOpen(false);
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder={categoriesLoading ? "Loading categories..." : "Select category"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map((item) => (
+                                        <SelectItem key={item.slug} value={item.slug}>
+                                            {item.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
             
             {/* MOBILE FOOTER */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur border-t border-border z-50 px-6 flex items-center justify-between safe-area-bottom">
