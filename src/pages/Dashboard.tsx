@@ -22,16 +22,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// Assuming blogApi methods return the raw data object from the response.
 import { blogApi, fetchCategories, type Category } from "@/lib/api"; 
-import { useAuth } from "@/contexts/AuthContext";
 import {
     PlusCircle,
-    LogOut,
     Edit,
     Trash2,
     Search,
-    Film,
     FileText,
     CheckSquare,
     Square,
@@ -41,13 +37,16 @@ import {
     FileEdit,
     AlertTriangle,
     ArrowDownWideNarrow,
+    Newspaper,
+    PenSquare,
+    Send,
+    Star,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import AnimatedContent from "@/components/AnimatedContent";
-import BlurText from "@/components/BlurText";
-import AdminAmbientBackground from "@/components/backgrounds/AdminAmbientBackground";
-import { FluidGlassButton } from "@/components/ui/fluid-glass-button";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { StatCard } from "@/components/admin/StatCard";
 
 // --- Types ---
 
@@ -118,7 +117,6 @@ export default function Dashboard() {
         confirmText: "Continue"
     });
 
-    const { logout, admin } = useAuth();
     const navigate = useNavigate();
 
     // --- 1. Data Loading ---
@@ -328,7 +326,7 @@ export default function Dashboard() {
     const renderBlogList = () => {
         if (paginatedBlogs.length === 0) {
             return (
-                <Card>
+                <Card className="surface-panel shadow-none">
                     <CardContent className="py-12 text-center">
                         <p className="text-muted-foreground">No articles found matching your filters</p>
                     </CardContent>
@@ -357,11 +355,11 @@ export default function Dashboard() {
                     const isSelected = selectedIds.has(blog._id);
                     
                     return (
-                        <AnimatedContent key={blog._id}>
                             <Card 
-                                className={`transition-all duration-200 group border-l-4 ${isSelected ? 'border-l-primary bg-primary/5' : 'border-l-transparent hover:border-l-primary/50 hover:bg-white/45'}`}
+                                key={blog._id}
+                                className={`group overflow-hidden rounded-[1.4rem] border shadow-none transition-all duration-200 ${isSelected ? 'border-primary/40 bg-primary/5' : 'border-border/80 bg-card hover:border-primary/30 hover:bg-card'}`}
                             >
-                                <CardContent className="p-3 sm:p-6">
+                                <CardContent className="p-4 sm:p-5">
                                     <div className="flex items-start gap-3 sm:gap-4">
                                         
                                         <div className="pt-1" onClick={(e) => e.stopPropagation()}>
@@ -374,13 +372,13 @@ export default function Dashboard() {
                                         </div>
 
                                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/admin/editor/${blog._id}`)}>
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                                            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2 mb-1.5 sm:mb-2">
-                                                        <h3 className="text-base sm:text-xl font-semibold truncate max-w-full">
-                                                            <BlurText text={blog.title} />
+                                                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                                                        <h3 className="max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                                                            {blog.title}
                                                         </h3>
-                                                        <div className="flex gap-1 shrink-0 scale-90 sm:scale-100 origin-left">
+                                                        <div className="flex shrink-0 gap-1 origin-left scale-90 sm:scale-100">
                                                             <Badge
                                                                 variant={blog.state === "published" ? "default" : "secondary"}
                                                             >
@@ -390,23 +388,22 @@ export default function Dashboard() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2">
+                                                    <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:gap-x-3">
                                                         <span className="font-medium text-foreground/80">{blog.author.name}</span>
                                                         <span>•</span>
-                                                        <span className="bg-secondary/50 px-1.5 py-0.5 rounded text-secondary-foreground">
-                                                            {/* ✅ FIX 4: Use the single category name */}
+                                                        <span className="rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">
                                                             {blog.category?.name ?? "Uncategorized"}
                                                         </span>
                                                         <span>•</span>
                                                         <span>{formatDate(blog.lastUpdated)}</span>
                                                     </div>
 
-                                                    <div className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                                                    <div className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                                         {blog.excerpt || "No excerpt provided..."}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex sm:flex-col gap-1 mt-2 sm:mt-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                <div className="mt-2 flex gap-1 sm:mt-0 sm:flex-col sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -437,58 +434,48 @@ export default function Dashboard() {
                                     </div>
                                 </CardContent>
                             </Card>
-                        </AnimatedContent>
                     );
                 })}
             </div>
         );
     };
 
+    const publishedCount = blogs.filter((blog) => blog.state === "published").length;
+    const draftCount = blogs.filter((blog) => blog.state === "draft").length;
+    const featuredCount = blogs.filter((blog) => blog.blogType && blog.blogType !== "normal").length;
+
     return (
-        <div className="admin-shell min-h-screen bg-background relative pb-32">
-            <AdminAmbientBackground variant="dashboard" />
-            
-            <header className="ambient-divider sticky top-0 z-30 border-b border-white/45 bg-white/55 backdrop-blur-xl">
-                <div className="container mx-auto px-4">
-                    <div className="flex h-16 items-center justify-between">
-                        <div className="flex items-center gap-4 sm:gap-8">
-                            <h1 className="text-xl font-bold hidden sm:block">
-                                <BlurText text="Article Library" />
-                            </h1>
-                            <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
-                                <Button variant="secondary" size="sm" className="gap-2 border border-white/70 bg-background text-foreground text-xs sm:text-sm px-2 sm:px-4">
-                                    <FileText className="h-3 w-3 sm:h-4 sm:w-4" /> Articles
-                                </Button>
-                                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground text-xs sm:text-sm px-2 sm:px-4" onClick={() => navigate('/admin/videos')}>
-                                    <Film className="h-3 w-3 sm:h-4 sm:w-4" /> Media
-                                </Button>
-                            </nav>
-                        </div>
-                        <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="hidden sm:flex mr-2">
-                            {blogs.length} Blogs
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={logout} title="Logout">
-                            <LogOut className="h-5 w-5 text-muted-foreground" />
+        <AdminShell
+            pageTitle="Articles"
+            pageDescription="Manage drafts, published stories, and editorial placements from a single publishing workspace."
+            pageActions={
+                <Button onClick={() => navigate("/admin/editor/new")} className="rounded-full">
+                    <PlusCircle className="h-4 w-4" />
+                    New article
+                </Button>
+            }
+        >
+            <div className="space-y-6 pb-28">
+                <PageHeader
+                    title="Article operations"
+                    description="Keep publishing organized with faster filtering, cleaner row states, and a clearer split between editorial status and content metadata."
+                    actions={
+                        <Button onClick={() => navigate("/admin/editor/new")} className="rounded-full md:hidden">
+                            <PlusCircle className="h-4 w-4" />
+                            New
                         </Button>
-                    </div>
-                    </div>
+                    }
+                />
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatCard label="All articles" value={blogs.length} icon={<Newspaper className="h-5 w-5" />} note="Total content in the workspace" />
+                    <StatCard label="Drafts" value={draftCount} icon={<PenSquare className="h-5 w-5" />} note="Stories waiting for review or polish" />
+                    <StatCard label="Published" value={publishedCount} icon={<Send className="h-5 w-5" />} note="Articles currently live to readers" />
+                    <StatCard label="Featured" value={featuredCount} icon={<Star className="h-5 w-5" />} note="Hero, featured, and editor's picks" />
                 </div>
-            </header>
-            
-            <main className="relative z-10 container mx-auto px-3 sm:px-4 py-6">
-                
-                {selectedIds.size === 0 && (
-                    <div className="fixed z-50 bottom-6 right-6 animate-in fade-in zoom-in duration-300">
-                        <FluidGlassButton className="rounded-full px-4 sm:px-6" glow size="lg" onClick={() => navigate("/admin/editor/new")}>
-                            <PlusCircle className="h-5 w-5" />
-                            <span className="font-semibold text-sm sm:text-base">New Article</span>
-                        </FluidGlassButton>
-                    </div>
-                )}
 
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <div className="surface-panel flex flex-col items-center justify-center gap-4 py-20">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         <p className="text-muted-foreground">Loading articles...</p>
                     </div>
@@ -496,23 +483,20 @@ export default function Dashboard() {
                     <div className="space-y-4 sm:space-y-6">
                         
                         {/* FILTERS & SORT */}
-                        <div className="glass-panel rounded-[1.5rem] p-3 sm:p-4">
+                        <div className="surface-toolbar p-3 sm:p-4">
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-                            {/* Search (Unchanged) */}
                             <div className="md:col-span-5 relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full border-white/60 bg-white/70"
+                                    className="pl-9 w-full"
                                 />
                             </div>
-                            {/* Filters & Sort */}
                             <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                                {/* Category Filter (Unchanged, uses allCategoryItems list) */}
                                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                    <SelectTrigger className="w-full border-white/60 bg-white/70"><SelectValue placeholder="Category" /></SelectTrigger>
+                                    <SelectTrigger className="w-full"><SelectValue placeholder="Category" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Categories</SelectItem>
                                         {allCategoryItems.map((cat) => (
@@ -522,9 +506,8 @@ export default function Dashboard() {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {/* Type Filter (Unchanged) */}
                                 <Select value={selectedType} onValueChange={setSelectedType}>
-                                    <SelectTrigger className="w-full border-white/60 bg-white/70"><SelectValue placeholder="Type" /></SelectTrigger>
+                                    <SelectTrigger className="w-full"><SelectValue placeholder="Type" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Types</SelectItem>
                                         <SelectItem value="normal">Normal</SelectItem>
@@ -533,9 +516,8 @@ export default function Dashboard() {
                                         <SelectItem value="editors pick">Editor's Pick</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {/* Sorting Select (Unchanged) */}
                                 <Select value={sortCriteria} onValueChange={(v: any) => setSortCriteria(v)}>
-                                    <SelectTrigger className="w-full gap-1 border-white/60 bg-white/70">
+                                    <SelectTrigger className="w-full gap-1">
                                         <ArrowDownWideNarrow className="h-4 w-4 text-muted-foreground" />
                                         <SelectValue />
                                     </SelectTrigger>
@@ -546,12 +528,11 @@ export default function Dashboard() {
                                         <SelectItem value="created_asc">Date Created (Oldest)</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {/* Items Per Page (Unchanged) */}
                                 <Select 
                                     value={String(itemsPerPage)} 
                                     onValueChange={(v) => setItemsPerPage(Number(v))}
                                 >
-                                    <SelectTrigger className="w-full border-white/60 bg-white/70">
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Rows" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -567,7 +548,7 @@ export default function Dashboard() {
 
                         {/* Tabs (Unchanged) */}
                         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                            <TabsList className="grid w-full grid-cols-3 max-w-md mb-4 sm:mb-6">
+                            <TabsList className="mb-4 grid w-full max-w-md grid-cols-3 rounded-full bg-secondary/70 p-1 sm:mb-6">
                                 <TabsTrigger value="all">All</TabsTrigger>
                                 <TabsTrigger value="draft">Drafts</TabsTrigger>
                                 <TabsTrigger value="published">Published</TabsTrigger>
@@ -586,7 +567,7 @@ export default function Dashboard() {
 
                         {/* PAGINATION CONTROLS (Unchanged) */}
                         {sortedAndFilteredBlogs.length > 0 && (
-                            <div className="flex items-center justify-between border-t pt-4">
+                            <div className="surface-toolbar flex items-center justify-between px-4 py-4">
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -611,12 +592,12 @@ export default function Dashboard() {
 
                     </div>
                 )}
-            </main>
+            </div>
 
             {/* MASS ACTIONS FLOATING BAR (Unchanged) */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] sm:w-[90%] max-w-2xl animate-in slide-in-from-bottom-10 fade-in">
-                        <div className="glass-panel-strong flex items-center justify-between rounded-[1.35rem] p-3 sm:p-4 text-card-foreground">
+                        <div className="flex items-center justify-between rounded-[1.35rem] border border-border bg-card p-3 text-card-foreground shadow-[0_16px_38px_rgba(15,23,42,0.12)] sm:p-4">
                             <div className="flex items-center gap-2 sm:gap-4">
                                 <Badge variant="secondary" className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
                                     {selectedIds.size} <span className="hidden sm:inline ml-1">Selected</span>
@@ -688,6 +669,6 @@ export default function Dashboard() {
                 </AlertDialogContent>
             </AlertDialog>
 
-        </div>
+        </AdminShell>
     );
 }

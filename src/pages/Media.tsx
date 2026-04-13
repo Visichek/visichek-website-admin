@@ -24,10 +24,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { useAuth } from "@/contexts/AuthContext";
 import { ContentManagementMediaApi, fetchCategories, CategoryItem } from "@/lib/api";
 import {
-    LogOut,
     Trash2,
     Search,
     Film,
@@ -45,11 +43,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Custom components
 import AnimatedContent from "@/components/AnimatedContent";
-import BlurText from "@/components/BlurText";
-import AdminAmbientBackground from "@/components/backgrounds/AdminAmbientBackground";
-import { FluidGlassButton } from "@/components/ui/fluid-glass-button";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { StatCard } from "@/components/admin/StatCard";
 
 // --- Types ---
 interface MediaItem {
@@ -104,7 +101,6 @@ export default function MediaDashboard() {
         confirmText: "Continue"
     });
 
-    const { logout } = useAuth();
     const navigate = useNavigate();
 
     // --- 1. Data Loading ---
@@ -213,6 +209,8 @@ export default function MediaDashboard() {
     }, [filteredMedia, selectedIds]);
 
     const isAllVisibleSelected = filteredMedia.length > 0 && filteredMedia.every(m => selectedIds.has(m.id));
+    const imageCount = media.filter((item) => item.mediaType === "image").length;
+    const videoCount = media.filter((item) => item.mediaType === "video").length;
 
     // --- 4. Actions ---
 
@@ -282,66 +280,52 @@ export default function MediaDashboard() {
     };
 
     return (
-        <div className="admin-shell min-h-screen bg-background pb-32 relative">
-            <AdminAmbientBackground variant="media" />
-            
-            <header className="ambient-divider sticky top-0 z-30 border-b border-white/45 bg-white/55 backdrop-blur-xl">
-                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4 sm:gap-8">
-                        <h1 className="font-bold text-lg md:text-xl hidden sm:block">
-                            <BlurText text="Media Library" />
-                        </h1>
-                        
-                        <nav className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg overflow-x-auto">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="gap-2 text-muted-foreground hover:text-foreground text-xs sm:text-sm px-2 sm:px-4" 
-                                onClick={() => navigate('/admin/')}
-                            >
-                                <FileText className="h-3 w-3 sm:h-4 sm:w-4" /> Articles
-                            </Button>
-                            <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                className="gap-2 border border-white/70 bg-background text-foreground text-xs sm:text-sm px-2 sm:px-4"
-                            >
-                                <Film className="h-3 w-3 sm:h-4 sm:w-4" /> Media
-                            </Button>
-                        </nav>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="hidden sm:flex mr-2">
-                            {filteredMedia.length} Assets
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={logout} title="Logout">
-                            <LogOut className="h-5 w-5 text-muted-foreground" />
+        <AdminShell
+            pageTitle="Media"
+            pageDescription="Organize image and video assets for stories, hero placements, and editorial updates."
+            pageActions={
+                <Button onClick={() => setIsUploadOpen(true)} className="rounded-full">
+                    <UploadCloud className="h-4 w-4" />
+                    Upload media
+                </Button>
+            }
+        >
+            <div className="space-y-6 pb-28">
+                <PageHeader
+                    title="Media library"
+                    description="Search, filter, upload, and clean up reusable editorial assets without leaving the content workspace."
+                    actions={
+                        <Button onClick={() => setIsUploadOpen(true)} className="rounded-full md:hidden">
+                            <UploadCloud className="h-4 w-4" />
+                            Upload
                         </Button>
-                    </div>
-                </div>
-            </header>
+                    }
+                />
 
-            <main className="relative z-10 container mx-auto px-4 py-6 space-y-6">
+                <div className="grid gap-4 md:grid-cols-3">
+                    <StatCard label="Total assets" value={media.length} icon={<Film className="h-5 w-5" />} note="Loaded in the current workspace" />
+                    <StatCard label="Images" value={imageCount} icon={<FileText className="h-5 w-5" />} note="Still visuals and feature images" />
+                    <StatCard label="Videos" value={videoCount} icon={<LayoutGrid className="h-5 w-5" />} note="Motion assets and media embeds" />
+                </div>
 
                 {/* --- Toolbar --- */}
-                <div className="glass-panel flex flex-col gap-4 rounded-[1.5rem] p-3 sm:p-4">
+                <div className="surface-toolbar flex flex-col gap-4 p-3 sm:p-4">
                     <div className="relative w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                             placeholder="Search files..." 
-                            className="pl-9 w-full border-white/60 bg-white/70"
+                            className="pl-9 w-full"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/40 bg-white/30 p-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/35 p-2">
                         <div className="flex flex-wrap items-center gap-2 flex-1">
                             <Filter className="h-4 w-4 text-muted-foreground mr-1 hidden sm:block" />
                             
                             <Select value={filterType} onValueChange={(v: any) => setFilterType(v)}>
-                                <SelectTrigger className="h-8 w-[110px] border-white/60 bg-white/70 text-xs">
+                                <SelectTrigger className="h-8 w-[110px] text-xs">
                                     <SelectValue placeholder="Type" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -352,7 +336,7 @@ export default function MediaDashboard() {
                             </Select>
 
                             <Select value={filterCategory} onValueChange={setFilterCategory}>
-                                <SelectTrigger className="h-8 w-[130px] border-white/60 bg-white/70 text-xs">
+                                <SelectTrigger className="h-8 w-[130px] text-xs">
                                     <SelectValue placeholder="Category" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -362,7 +346,7 @@ export default function MediaDashboard() {
                             </Select>
                         </div>
 
-                        <div className="flex overflow-hidden rounded-xl border border-white/75 bg-white/70">
+                        <div className="flex overflow-hidden rounded-xl border border-border bg-card">
                             <button 
                                 onClick={() => setViewMode('grid')}
                                 className={`p-2 ${viewMode === 'grid' ? 'bg-secondary text-foreground' : 'bg-background text-muted-foreground'}`}
@@ -398,7 +382,7 @@ export default function MediaDashboard() {
 
                 {/* --- Content --- */}
                 {filteredMedia.length === 0 && !isLoading ? (
-                    <div className="py-20 text-center border-2 border-dashed rounded-xl">
+                    <div className="surface-panel py-20 text-center border-2 border-dashed">
                         <p className="text-muted-foreground">No files found.</p>
                         <Button variant="link" onClick={() => {setSearchQuery(''); setFilterCategory('all'); setFilterType('all')}}>Clear Filters</Button>
                     </div>
@@ -446,17 +430,9 @@ export default function MediaDashboard() {
                         )}
                 </div>
 
-            </main>
+            </div>
 
-            {/* --- FLOATING UPLOAD BUTTON --- */}
-{selectedIds.size === 0 && (
-    <div className="fixed z-50 bottom-6 right-6 animate-in fade-in zoom-in duration-300">
         <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <FluidGlassButton className="rounded-full px-4 sm:px-6" size="lg" glow onClick={() => setIsUploadOpen(true)}>
-                    <UploadCloud className="h-5 w-5" />
-                    <span className="font-semibold text-sm sm:text-base">Upload Media</span>
-            </FluidGlassButton>
-
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Upload File</DialogTitle>
@@ -500,13 +476,11 @@ export default function MediaDashboard() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    </div>
-)}
 
             {/* --- Floating Action Bar (For Selection) --- */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-6 inset-x-0 px-4 flex justify-center z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
-                        <div className="glass-panel-strong flex w-full max-w-md items-center justify-between rounded-[1.35rem] p-3 text-card-foreground">
+                        <div className="flex w-full max-w-md items-center justify-between rounded-[1.35rem] border border-border bg-card p-3 text-card-foreground shadow-[0_16px_38px_rgba(15,23,42,0.12)]">
                             <div className="flex items-center gap-3">
                                 <Badge variant="default" className="h-7 px-3">{selectedIds.size}</Badge>
                                 <span className="text-sm font-medium hidden sm:inline">selected</span>
@@ -552,7 +526,7 @@ export default function MediaDashboard() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </AdminShell>
     );
 }
 

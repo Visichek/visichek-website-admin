@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,42 +10,47 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 120 18% 97%;
-    --foreground: 210 20% 13%;
+    --background: 36 20% 98%;
+    --foreground: 222 28% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 20% 13%;
+    --card-foreground: 222 28% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 20% 13%;
+    --popover-foreground: 222 28% 12%;
 
-    --primary: 138 48% 28%;
+    --primary: 142 68% 28%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 120 16% 93%;
-    --secondary-foreground: 210 20% 13%;
+    --secondary: 36 22% 95%;
+    --secondary-foreground: 222 28% 12%;
 
-    --muted: 120 16% 94%;
-    --muted-foreground: 210 10% 41%;
+    --muted: 32 18% 95%;
+    --muted-foreground: 215 13% 43%;
 
-    --accent: 140 39% 88%;
-    --accent-foreground: 138 48% 28%;
+    --accent: 36 20% 93%;
+    --accent-foreground: 222 28% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 130 16% 84%;
-    --input: 130 14% 86%;
-    --ring: 138 48% 28%;
+    --border: 32 18% 88%;
+    --input: 32 18% 88%;
+    --ring: 142 68% 28%;
 
     --success: 142 59% 38%;
     --success-foreground: 0 0% 98%;
 
-    --radius: 1rem;
+    --radius: 0.9rem;
     --glass: 0 0% 100%;
     --glass-strong: 0 0% 100%;
     --glass-border: 0 0% 100%;
-    --app-gradient: linear-gradient(180deg, hsl(120 18% 98%) 0%, hsl(120 14% 96%) 45%, hsl(120 12% 94%) 100%);
+    --app-gradient: linear-gradient(180deg, hsl(36 25% 98%) 0%, hsl(32 22% 97%) 45%, hsl(28 18% 95%) 100%);
+
+    --sidebar: 34 24% 97%;
+    --sidebar-foreground: 222 24% 16%;
+    --sidebar-accent: 36 21% 93%;
+    --sidebar-border: 32 16% 87%;
 
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -92,34 +99,65 @@ All colors MUST be HSL.
     background-image: var(--app-gradient);
     min-height: 100vh;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: "Plus Jakarta Sans", sans-serif;
   }
 
   #root {
     min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: "Fraunces", serif;
+  }
+
+  code,
+  kbd,
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
   }
 }
 
 @layer components {
   .glass-panel {
     background: linear-gradient(180deg, hsla(var(--glass), 0.78), hsla(var(--glass-strong), 0.48));
-    border: 1px solid rgba(255, 255, 255, 0.92);
-    outline: 1px solid rgba(130, 146, 134, 0.16);
+    border: 1px solid rgba(231, 226, 216, 0.96);
+    outline: 1px solid rgba(150, 140, 122, 0.12);
     outline-offset: -1px;
-    backdrop-filter: blur(24px);
+    backdrop-filter: blur(18px);
   }
 
   .glass-panel-strong {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.58));
-    border: 1px solid rgba(255, 255, 255, 0.98);
-    outline: 1px solid rgba(130, 146, 134, 0.2);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 248, 243, 0.94));
+    border: 1px solid rgba(231, 226, 216, 0.96);
+    outline: 1px solid rgba(150, 140, 122, 0.14);
     outline-offset: -1px;
-    backdrop-filter: blur(28px);
+    backdrop-filter: blur(16px);
   }
 
   .admin-shell {
     position: relative;
     isolation: isolate;
     overflow: hidden;
+  }
+
+  .surface-panel {
+    @apply rounded-[1.5rem] border border-border/80 bg-card;
+    box-shadow: 0 18px 40px rgba(24, 26, 27, 0.05);
+  }
+
+  .surface-toolbar {
+    @apply rounded-[1.5rem] border border-border/70 bg-card;
+    box-shadow: 0 10px 24px rgba(24, 26, 27, 0.04);
+  }
+
+  .blog-admin-shell {
+    background-image:
+      radial-gradient(circle at top left, rgba(22, 101, 52, 0.04), transparent 24%),
+      radial-gradient(circle at top right, rgba(15, 23, 42, 0.035), transparent 28%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.9));
   }
 
   .ambient-divider {

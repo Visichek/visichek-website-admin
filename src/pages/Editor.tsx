@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import useCategories from "@/hooks/useCategories";
 import type { PartialBlock } from "@blocknote/core";
 import { MediaUploaderModal } from "@/components/MediaUploaderWithCaptionComponent";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 type BlockNoteDocument = PartialBlock<any>[];
 
@@ -296,72 +298,66 @@ export default function Editor() {
     };
 
     return (
-        <div className="min-h-screen bg-background pb-20 md:pb-0">
-            <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-                <div className="container max-w-5xl mx-auto h-16 px-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="h-10 w-10 -ml-2">
-                            <ArrowLeft className="w-5 h-5" />
+        <AdminShell
+            pageTitle={isNew ? "New article" : "Editor"}
+            pageDescription="Write, refine, and publish stories inside the same editorial workspace as the rest of the admin."
+            pageActions={
+                <>
+                    <MediaUploaderModal 
+                        onUploadSuccess={() => window.location.reload()} 
+                        mediaId={articleId} 
+                        label="Add Media"
+                        variant="ghost"
+                    />
+                    <BlogSettingsDialog
+                        authorName={authorName}
+                        setAuthorName={setAuthorName}
+                        authorAvatar={authorAvatar}
+                        setAuthorAvatar={setAuthorAvatar}
+                        authorAffiliation={authorAffiliation}
+                        setAuthorAffiliation={setAuthorAffiliation}
+                        category={category ?? (categories[0] ?? null)}
+                        setCategory={setCategory}
+                        featureImageUrl={featureImageUrl}
+                        setFeatureImageUrl={setFeatureImageUrl}
+                        blogType={blogType}
+                        setBlogType={setBlogType}
+                    />
+                    {status === "draft" ? (
+                        <Button onClick={handlePublish} className="gap-2 rounded-full px-5">
+                            Publish <Send className="w-4 h-4" /> 
                         </Button>
-                        <div className="flex flex-col">
-                            <span className="text-sm font-medium text-foreground hidden sm:inline-block">
-                                {status === 'draft' ? 'Draft' : 'Published'}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                                <StatusIndicator className="w-3 h-3" />
-                                <span className="text-xs text-muted-foreground">
+                    ) : (
+                        <Button variant="outline" onClick={handleUnpublish} className="rounded-full">
+                            Unpublish
+                        </Button>
+                    )}
+                </>
+            }
+            contentClassName="pb-24"
+        >
+            <div className="mx-auto max-w-5xl space-y-6">
+                <PageHeader
+                    title={title || (isNew ? "Untitled story" : "Editorial draft")}
+                    description="Use the editor below to build the story body, update metadata, and keep publishing status in sync."
+                    actions={
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={() => navigate("/admin")} className="rounded-full">
+                                <ArrowLeft className="h-4 w-4" />
+                                Back
+                            </Button>
+                            <Badge variant={status === "published" ? "default" : "secondary"} className="rounded-full px-3 py-1">
+                                {status}
+                            </Badge>
+                            <div className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
+                                <StatusIndicator className="h-3 w-3" />
                                 {saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving...' : 'Error'}
-                                </span>
                             </div>
                         </div>
-                    </div>
+                    }
+                />
 
-                    <div className="hidden md:flex items-center gap-2">
-                         <MediaUploaderModal 
-                            onUploadSuccess={() => window.location.reload()} 
-                            mediaId={articleId} 
-                            label="Add Media"
-                            variant="ghost"
-                        />
-                        <BlogSettingsDialog
-                            authorName={authorName}
-                            setAuthorName={setAuthorName}
-                            authorAvatar={authorAvatar}
-                            setAuthorAvatar={setAuthorAvatar}
-                            authorAffiliation={authorAffiliation}
-                            setAuthorAffiliation={setAuthorAffiliation}
-                            // ✅ FIX: Safe fallback to first category in list
-                            category={category ?? (categories[0] ?? null)}
-                            setCategory={setCategory}
-                            featureImageUrl={featureImageUrl}
-                            setFeatureImageUrl={setFeatureImageUrl}
-                            blogType={blogType}
-                            setBlogType={setBlogType}
-                        />
-                        <div className="w-px h-6 bg-border mx-2" />
-                        {status === "draft" ? (
-                            <Button onClick={handlePublish} className="gap-2 px-6">
-                                Publish <Send className="w-4 h-4" /> 
-                            </Button>
-                        ) : (
-                            <Button variant="outline" onClick={handleUnpublish}>
-                                Unpublish
-                            </Button>
-                        )}
-                    </div>
-
-                    <div className="flex md:hidden items-center gap-1">
-                        {status === "draft" && (
-                                <Button size="sm" onClick={handlePublish} className="bg-primary text-primary-foreground h-9 px-4 text-xs font-medium rounded-full">
-                                    Publish
-                                </Button>
-                        )}
-                    </div>
-                </div>
-            </header>
-
-            <main className="container max-w-4xl mx-auto px-4 py-6 sm:py-12">
-                <div className="space-y-6">
+                <div className="surface-panel space-y-6 p-5 sm:p-8">
                     <div className="relative group px-14">
                         <Input
                             placeholder="Article Title"
@@ -408,7 +404,7 @@ export default function Editor() {
                         )}
                     </div>
                 </div>
-            </main>
+            </div>
 
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
                 <DialogContent className="max-w-md">
@@ -485,6 +481,6 @@ export default function Editor() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-        </div>
+        </AdminShell>
     );
 }
