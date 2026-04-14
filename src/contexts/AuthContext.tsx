@@ -5,13 +5,20 @@ interface Admin {
   id: string;
   full_name: string;
   email: string;
+  mfa_enabled?: boolean;
 }
+
+export type LoginResult =
+  | { kind: "authenticated" }
+  | { kind: "otp_required"; otp_challenge_id: string; email: string };
 
 interface AuthContextType {
   admin: Admin | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  verifyLoginOtp: (otp_challenge_id: string, otp_code: string) => Promise<void>;
+  refreshMe: () => Promise<void>;
   logout: () => void;
 }
 
@@ -32,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return;
       }
-      
+
       const response = await adminApi.getMe();
       if (response?.data) {
         setAdmin(response.data);
@@ -50,9 +57,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     const response = await adminApi.login(email, password);
+    const data = response.data;
+    if (data?.otp_required && data?.otp_challenge_id) {
+      return {
+        kind: "otp_required",
+        otp_challenge_id: data.otp_challenge_id,
+        email: data.email ?? email,
+      };
+    }
+    setAdmin(data);
+    return { kind: "authenticated" };
+  };
+
+  const verifyLoginOtp = async (otp_challenge_id: string, otp_code: string) => {
+    const response = await adminApi.verifyLoginOtp(otp_challenge_id, otp_code);
     setAdmin(response.data);
+  };
+
+  const refreshMe = async () => {
+    const response = await adminApi.getMe();
+    if (response?.data) setAdmin(response.data);
   };
 
   const logout = () => {
@@ -68,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!admin,
         isLoading,
         login,
+        verifyLoginOtp,
+        refreshMe,
         logout,
       }}
     >

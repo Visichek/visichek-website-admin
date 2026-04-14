@@ -114,14 +114,49 @@ export const adminApi = {
     }
     return response.data;
   },
-  
+
+  verifyLoginOtp: async (otp_challenge_id: string, otp_code: string) => {
+    const response = await api.post("/v1/admins/login/verify-otp", {
+      otp_challenge_id,
+      otp_code,
+    });
+    if (response.data.data?.access_token) {
+      localStorage.setItem("access_token", response.data.data.access_token);
+      localStorage.setItem("refresh_token", response.data.data.refresh_token);
+    }
+    return response.data;
+  },
+
   refresh: async (refreshToken: string) => {
     const response = await api.post("/v1/admins/refresh", { refresh_token: refreshToken });
     return response.data;
   },
-  
+
   getMe: async () => {
     const response = await api.get("/v1/admins/me");
+    return response.data;
+  },
+
+  invite: async (full_name: string, email: string) => {
+    const response = await api.post("/v1/admins/invite", { full_name, email });
+    return response.data;
+  },
+
+  mfaEnableRequest: async () => {
+    const response = await api.post("/v1/admins/mfa/enable/request");
+    return response.data;
+  },
+
+  mfaEnableConfirm: async (otp_challenge_id: string, otp_code: string) => {
+    const response = await api.post("/v1/admins/mfa/enable/confirm", {
+      otp_challenge_id,
+      otp_code,
+    });
+    return response.data;
+  },
+
+  mfaDisable: async () => {
+    const response = await api.post("/v1/admins/mfa/disable");
     return response.data;
   },
 };

@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+type OtpStep = { otp_challenge_id: string; email: string } | null;
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,7 +16,9 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { login, isAuthenticated } = useAuth();
+  const [otpStep, setOtpStep] = useState<OtpStep>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const { login, verifyLoginOtp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,9 +35,14 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      toast.success("Welcome back!");
-      navigate("/admin");
+      const result = await login(email, password);
+      if (result.kind === "otp_required") {
+        setOtpStep({ otp_challenge_id: result.otp_challenge_id, email: result.email });
+        toast.success("We sent a verification code to your email.");
+      } else {
+        toast.success("Welcome back!");
+        navigate("/admin");
+      }
     } catch (error: any) {
       const message = error.response?.data?.detail || "Login failed. Please check your credentials.";
       setErrorMessage(message);
@@ -41,6 +50,35 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpStep) return;
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      await verifyLoginOtp(otpStep.otp_challenge_id, otpCode);
+      toast.success("Welcome back!");
+      navigate("/admin");
+    } catch (error: any) {
+      const status = error.response?.status;
+      const message = error.response?.data?.detail || "Verification failed.";
+      setErrorMessage(message);
+      toast.error(message);
+      if (status === 429) {
+        setOtpStep(null);
+        setOtpCode("");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cancelOtp = () => {
+    setOtpStep(null);
+    setOtpCode("");
+    setErrorMessage(null);
   };
 
   return (
@@ -86,6 +124,37 @@ export default function Login() {
             </div>
           )}
 
+          {otpStep ? (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                We emailed a 6-digit verification code to <b>{otpStep.email}</b>. It expires in 10 minutes.
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="otp" className="text-slate-700">Verification code</Label>
+                <div className="group relative">
+                  <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-500" />
+                  <Input
+                    id="otp"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    required
+                    className="h-12 rounded-2xl border-slate-200 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-400/60 tracking-[0.3em]"
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="h-12 w-full rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 hover:bg-emerald-600" disabled={isLoading || otpCode.length !== 6}>
+                {isLoading ? "Verifying..." : "Verify and sign in"}
+                {!isLoading && <ArrowRight className="h-4 w-4" />}
+              </Button>
+              <button type="button" onClick={cancelOtp} className="text-xs text-slate-500 hover:text-slate-700">
+                Use a different account
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-slate-700">
@@ -134,6 +203,7 @@ export default function Login() {
               {!isLoading && <ArrowRight className="h-4 w-4" />}
             </Button>
           </form>
+          )}
 
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>Need access to the publishing workspace?</span>

@@ -10,8 +10,12 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
+  ShieldCheck,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import { InviteAdminDialog } from "@/components/admin/InviteAdminDialog";
+import { MfaSettingsDialog } from "@/components/admin/MfaSettingsDialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -86,9 +90,13 @@ function isActivePath(pathname: string, href: string) {
 function DesktopSidebar({
   collapsed,
   onCollapsedChange,
+  onInvite,
+  onMfa,
 }: {
   collapsed: boolean;
   onCollapsedChange: (v: boolean) => void;
+  onInvite: () => void;
+  onMfa: () => void;
 }) {
   const { admin, logout } = useAuth();
   const location = useLocation();
@@ -295,6 +303,15 @@ function DesktopSidebar({
               )}
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onInvite} className="gap-2 min-h-[36px]">
+              <UserPlus className="h-4 w-4" />
+              Invite admin
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onMfa} className="gap-2 min-h-[36px]">
+              <ShieldCheck className="h-4 w-4" />
+              {admin?.mfa_enabled ? "Manage 2FA" : "Enable 2FA"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem disabled className="gap-2 min-h-[36px]">
               <HelpCircle className="h-4 w-4" />
               Get help
@@ -373,10 +390,19 @@ export function AdminShell({
 }: AdminShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(variant === "focus");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [mfaOpen, setMfaOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <DesktopSidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />
+      <DesktopSidebar
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
+        onInvite={() => setInviteOpen(true)}
+        onMfa={() => setMfaOpen(true)}
+      />
+      <InviteAdminDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+      <MfaSettingsDialog open={mfaOpen} onOpenChange={setMfaOpen} />
 
       <div className={cn(collapsed ? "lg:pl-16" : "lg:pl-64")}>
         <header className="sticky top-0 z-sticky flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6">
