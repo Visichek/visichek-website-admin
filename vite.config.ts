@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 5173,
-    allowedHosts: ['admin.theplayersrising.com'], // Add this line
+    allowedHosts: ['content.visichek.app'], // Add this line
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
