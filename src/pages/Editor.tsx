@@ -358,7 +358,7 @@ export default function Editor() {
                     placeholder="Title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="font-display text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight border-none px-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/30 h-auto py-2 w-full"
+                    className="font-display text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight !border-0 outline-none px-0 shadow-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent placeholder:text-muted-foreground/30 h-auto py-2 w-full"
                 />
 
                 <div className="flex flex-wrap items-center gap-3 py-4 text-sm text-muted-foreground">

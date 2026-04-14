@@ -127,7 +127,7 @@
 
   /* Medium-style writing canvas — used by the editor focus mode */
   .medium-canvas {
-    @apply mx-auto w-full max-w-[720px] px-4 sm:px-6;
+    @apply mx-auto w-full max-w-[1024px] px-4 sm:px-6;
   }
 
   .medium-canvas input[type="text"],
