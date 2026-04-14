@@ -1,21 +1,22 @@
 import { ReactNode, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  ChevronUp,
+  HelpCircle,
+  Image as ImageIcon,
+  LogOut,
   Menu,
   Newspaper,
-  Image as ImageIcon,
-  Clock3,
-  ChevronRight,
-  LogOut,
+  PanelLeft,
+  PanelLeftClose,
   Settings,
-  UserCircle2,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -26,13 +27,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 type NavItem = {
   label: string;
   href?: string;
-  icon: typeof Newspaper;
+  icon: LucideIcon;
   description?: string;
   soon?: boolean;
 };
@@ -42,7 +48,7 @@ const navItems: NavItem[] = [
     label: "Articles",
     href: "/admin",
     icon: Newspaper,
-    description: "Manage drafts, published stories, and editorial placement",
+    description: "Drafts, published stories, and editorial placement",
   },
   {
     label: "Media",
@@ -52,14 +58,8 @@ const navItems: NavItem[] = [
   },
   {
     label: "Categories",
-    icon: ChevronRight,
-    description: "Taxonomy and organization tools",
-    soon: true,
-  },
-  {
-    label: "Settings",
     icon: Settings,
-    description: "Workspace preferences and system controls",
+    description: "Taxonomy and organization — coming soon",
     soon: true,
   },
 ];
@@ -70,44 +70,276 @@ interface AdminShellProps {
   pageDescription?: string;
   pageActions?: ReactNode;
   contentClassName?: string;
+  /**
+   * "default" — standard dashboard layout with padded content.
+   * "focus"  — edge-to-edge canvas (used by the editor). Sidebar starts collapsed;
+   *            content area has no page padding so callers control their own gutters.
+   */
+  variant?: "default" | "focus";
 }
 
-function ShellNav({
-  onItemClick,
+function isActivePath(pathname: string, href: string) {
+  if (href === "/admin") return pathname === "/admin";
+  return pathname.startsWith(href);
+}
+
+function DesktopSidebar({
+  collapsed,
+  onCollapsedChange,
 }: {
-  onItemClick?: () => void;
+  collapsed: boolean;
+  onCollapsedChange: (v: boolean) => void;
 }) {
+  const { admin, logout } = useAuth();
   const location = useLocation();
 
   return (
-    <nav className="space-y-1" aria-label="Main navigation">
+    <aside
+      className={cn(
+        "hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-in-out",
+        collapsed ? "lg:w-16" : "lg:w-64",
+      )}
+    >
+      {/* Header: brand + collapse toggle */}
+      <div
+        className={cn(
+          "flex h-14 items-center",
+          collapsed ? "justify-center px-2" : "justify-between px-5",
+        )}
+      >
+        {!collapsed && (
+          <div>
+            <div className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground">
+              VisiChek
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
+              Blog Admin
+            </div>
+          </div>
+        )}
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onCollapsedChange(!collapsed)}
+              className={cn(
+                "flex items-center justify-center rounded-md p-1.5 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors",
+                "min-h-[32px] min-w-[32px]",
+              )}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <PanelLeft className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Nav */}
+      <nav
+        className={cn(
+          "flex-1 overflow-y-auto py-2",
+          collapsed ? "px-2" : "px-3",
+        )}
+        aria-label="Main navigation"
+      >
+        <ul className="space-y-0.5">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isLink = Boolean(item.href);
+            const active = item.href
+              ? isActivePath(location.pathname, item.href)
+              : false;
+
+            const sharedClasses = cn(
+              "group flex items-center rounded-lg text-sm font-medium transition-colors",
+              collapsed
+                ? "justify-center p-2 min-h-[40px]"
+                : "gap-3 px-3 py-2 min-h-[40px]",
+              active
+                ? "bg-sidebar-accent text-sidebar-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              !isLink && "cursor-not-allowed opacity-60 hover:bg-transparent",
+            );
+
+            const body = (
+              <>
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0 transition-colors",
+                    active
+                      ? "text-sidebar-foreground"
+                      : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80",
+                  )}
+                  aria-hidden="true"
+                />
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {item.soon && (
+                      <span className="ml-auto rounded-full border border-sidebar-border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/50">
+                        Soon
+                      </span>
+                    )}
+                  </>
+                )}
+              </>
+            );
+
+            return (
+              <li key={item.label}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {isLink ? (
+                      <NavLink
+                        to={item.href as string}
+                        className={sharedClasses}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        {body}
+                      </NavLink>
+                    ) : (
+                      <div className={sharedClasses} aria-disabled="true">
+                        {body}
+                      </div>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-[220px]">
+                    {collapsed ? (
+                      <div>
+                        <div className="font-medium">{item.label}</div>
+                        {item.description && (
+                          <div className="mt-0.5 text-xs opacity-80">
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      item.description || item.label
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* User footer */}
+      <div
+        className={cn(
+          "border-t border-sidebar-border",
+          collapsed ? "px-2 py-2" : "px-3 py-2",
+        )}
+      >
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "flex items-center w-full rounded-lg transition-colors",
+                    "hover:bg-sidebar-accent text-sidebar-foreground",
+                    collapsed
+                      ? "justify-center p-2 min-h-[44px]"
+                      : "gap-3 px-3 py-2.5 min-h-[44px]",
+                  )}
+                >
+                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                    {(admin?.full_name?.charAt(0) ?? "A").toUpperCase()}
+                  </div>
+
+                  {!collapsed && (
+                    <>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-sm font-medium leading-tight truncate">
+                          {admin?.full_name ?? "Admin"}
+                        </p>
+                        {admin?.email && (
+                          <p className="text-xs text-sidebar-foreground/50 leading-tight truncate mt-0.5">
+                            {admin.email}
+                          </p>
+                        )}
+                      </div>
+                      <ChevronUp className="h-4 w-4 shrink-0 text-sidebar-foreground/40" />
+                    </>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? "right" : "top"}>
+              Open account menu
+            </TooltipContent>
+          </Tooltip>
+
+          <DropdownMenuContent
+            side={collapsed ? "right" : "top"}
+            align="start"
+            sideOffset={8}
+            className="w-56"
+          >
+            <div className="px-2 py-2">
+              <p className="text-sm font-medium truncate">
+                {admin?.full_name ?? "Admin"}
+              </p>
+              {admin?.email && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {admin.email}
+                </p>
+              )}
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="gap-2 min-h-[36px]">
+              <HelpCircle className="h-4 w-4" />
+              Get help
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={logout}
+              className="gap-2 min-h-[36px] text-destructive focus:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </aside>
+  );
+}
+
+function MobileNav({ onClose }: { onClose: () => void }) {
+  const location = useLocation();
+
+  return (
+    <nav className="space-y-1 px-4 py-5" aria-label="Main navigation">
       {navItems.map((item) => {
         const Icon = item.icon;
         const active = item.href
-          ? item.href === "/admin"
-            ? location.pathname === "/admin"
-            : location.pathname.startsWith(item.href)
+          ? isActivePath(location.pathname, item.href)
           : false;
+
+        const classes = cn(
+          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+          active
+            ? "bg-sidebar-accent text-sidebar-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+          !item.href && "cursor-not-allowed opacity-60",
+        );
 
         if (!item.href) {
           return (
-            <div
-              key={item.label}
-              className="group flex items-center justify-between rounded-2xl border border-transparent px-3 py-3 text-sm text-sidebar-foreground/55"
-            >
-              <div className="flex items-center gap-3">
-                <Icon className="h-4 w-4" />
-                <div>
-                  <div className="font-medium">{item.label}</div>
-                  {item.description && (
-                    <div className="mt-0.5 text-xs text-sidebar-foreground/45">
-                      {item.description}
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div key={item.label} className={classes} aria-disabled="true">
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="flex-1">{item.label}</span>
               {item.soon && (
-                <span className="rounded-full border border-sidebar-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
+                <span className="rounded-full border border-sidebar-border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/50">
                   Soon
                 </span>
               )}
@@ -119,28 +351,11 @@ function ShellNav({
           <NavLink
             key={item.label}
             to={item.href}
-            onClick={onItemClick}
-            className={cn(
-              "group flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition-colors",
-              active
-                ? "border-sidebar-border bg-sidebar-accent text-sidebar-foreground"
-                : "border-transparent text-sidebar-foreground/70 hover:border-sidebar-border hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-            )}
+            onClick={onClose}
+            className={classes}
           >
-            <Icon
-              className={cn(
-                "h-4 w-4",
-                active ? "text-primary" : "text-sidebar-foreground/45 group-hover:text-sidebar-foreground/70",
-              )}
-            />
-            <div className="min-w-0">
-              <div className="font-medium">{item.label}</div>
-              {item.description && (
-                <div className="mt-0.5 text-xs text-sidebar-foreground/45">
-                  {item.description}
-                </div>
-              )}
-            </div>
+            <Icon className="h-[18px] w-[18px] shrink-0" />
+            <span>{item.label}</span>
           </NavLink>
         );
       })}
@@ -154,124 +369,63 @@ export function AdminShell({
   pageDescription,
   pageActions,
   contentClassName,
+  variant = "default",
 }: AdminShellProps) {
-  const { admin, logout } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(variant === "focus");
 
   return (
-    <div className="blog-admin-shell min-h-screen bg-background text-foreground">
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col lg:border-r lg:border-sidebar-border lg:bg-sidebar">
-        <div className="border-b border-sidebar-border px-6 py-6">
-          <div className="inline-flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Newspaper className="h-5 w-5" />
+    <div className="min-h-screen bg-background text-foreground">
+      <DesktopSidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />
+
+      <div className={cn(collapsed ? "lg:pl-16" : "lg:pl-64")}>
+        <header className="sticky top-0 z-sticky flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6">
+          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden min-h-[44px] min-w-[44px]"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[88vw] max-w-sm border-r border-sidebar-border bg-sidebar p-0"
+            >
+              <SheetHeader className="border-b border-sidebar-border px-6 py-6 text-left">
+                <SheetTitle className="font-display text-xl">
+                  VisiChek Blog Admin
+                </SheetTitle>
+              </SheetHeader>
+              <MobileNav onClose={() => setMobileNavOpen(false)} />
+            </SheetContent>
+          </Sheet>
+
+          <div className="min-w-0 flex-1">
+            <div className="font-display text-base font-semibold tracking-tight text-foreground truncate">
+              {pageTitle}
             </div>
-            <div>
-              <div className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground">
-                VisiChek
+            {pageDescription && (
+              <div className="hidden truncate text-xs text-muted-foreground md:block">
+                {pageDescription}
               </div>
-              <div className="text-xs uppercase tracking-[0.18em] text-sidebar-foreground/45">
-                Blog Admin
-              </div>
-            </div>
+            )}
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-5">
-          <ShellNav />
-        </div>
-
-        <div className="border-t border-sidebar-border px-4 py-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-2xl border border-sidebar-border bg-sidebar-accent/75 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <UserCircle2 className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-sidebar-foreground">
-                    {admin?.full_name ?? "Admin"}
-                  </div>
-                  <div className="truncate text-xs text-sidebar-foreground/45">
-                    {admin?.email ?? "Content workspace"}
-                  </div>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
-                <Clock3 className="mr-2 h-4 w-4" />
-                Publishing desk
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </aside>
-
-      <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 border-b border-border/70 bg-background/92 backdrop-blur">
-          <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[88vw] max-w-sm border-r border-sidebar-border bg-sidebar p-0">
-                <SheetHeader className="border-b border-sidebar-border px-6 py-6 text-left">
-                  <SheetTitle className="font-display text-xl">VisiChek Blog Admin</SheetTitle>
-                </SheetHeader>
-                <div className="px-4 py-5">
-                  <ShellNav onItemClick={() => setMobileNavOpen(false)} />
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <div className="min-w-0 flex-1">
-              <div className="font-display text-lg font-semibold tracking-tight text-foreground">
-                {pageTitle}
-              </div>
-              {pageDescription && (
-                <div className="hidden text-sm text-muted-foreground md:block">
-                  {pageDescription}
-                </div>
-              )}
-            </div>
-
+          {pageActions && (
             <div className="hidden items-center gap-2 md:flex">{pageActions}</div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 rounded-full px-3">
-                  <UserCircle2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">{admin?.full_name?.split(" ")[0] ?? "Admin"}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel className="space-y-0.5">
-                  <div>{admin?.full_name ?? "Admin"}</div>
-                  <div className="text-xs font-normal text-muted-foreground">
-                    {admin?.email ?? ""}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          )}
         </header>
 
-        <main className={cn("px-4 py-6 lg:px-8 lg:py-8", contentClassName)}>
+        <main
+          className={cn(
+            variant === "focus" ? "py-0" : "px-4 py-6 lg:px-8 lg:py-8",
+            contentClassName,
+          )}
+        >
           {children}
         </main>
       </div>

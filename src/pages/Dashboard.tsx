@@ -1,10 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -12,6 +11,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,53 +29,32 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { blogApi, fetchCategories, type Category } from "@/lib/api"; 
+import { blogApi, fetchCategories, type Category } from "@/lib/api";
 import {
-    PlusCircle,
-    Edit,
-    Trash2,
-    Search,
-    FileText,
-    CheckSquare,
-    Square,
-    ChevronLeft,
-    ChevronRight,
-    UploadCloud,
-    FileEdit,
     AlertTriangle,
-    ArrowDownWideNarrow,
-    Newspaper,
-    PenSquare,
-    Send,
-    Star,
+    ArrowDownUp,
+    Edit3,
+    FileEdit,
+    Filter,
+    MoreHorizontal,
+    PenLine,
+    Search,
+    Trash2,
+    UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin/AdminShell";
-import { PageHeader } from "@/components/admin/PageHeader";
-import { StatCard } from "@/components/admin/StatCard";
+import { cn } from "@/lib/utils";
 
 // --- Types ---
-
-// Type for a single category item (used in the Categories list filter)
-interface CategoryItem {
-    itemIndex: number;
-    name: string;
-    slug: string;
-}
-
-// 💥 CRITICAL FIX: The Blog's category property only contains a single category object.
 interface Blog {
     _id: string;
     title: string;
     state: "draft" | "published";
     author: { name: string };
-    // ✅ FIX 1: Blog category is a single item, not a list wrapper
-    category: { 
-        name: string;
-        slug: string;
-    }; 
-    dateCreated:number;
+    category: { name: string; slug: string };
+    dateCreated: number;
     lastUpdated: number;
     excerpt: string;
     blogType: "normal" | "editors pick" | "hero section" | "featured story";
@@ -76,32 +62,39 @@ interface Blog {
     itemIndex: number;
 }
 
-// --- Component Start ---
+type TabKey = "all" | "draft" | "published";
+type SortKey = "updated_desc" | "updated_asc" | "created_desc" | "created_asc";
+
+const sortLabels: Record<SortKey, string> = {
+    updated_desc: "Last updated — newest",
+    updated_asc: "Last updated — oldest",
+    created_desc: "Date created — newest",
+    created_asc: "Date created — oldest",
+};
+
 export default function Dashboard() {
-    // Data State
+    const navigate = useNavigate();
+
+    // Data
     const [categories, setCategories] = useState<Category | null>(null);
-    const allCategoryItems = categories?.listOfCategories ?? [];
-    const [categoriesLoading, setCategoriesLoading] = useState(true);
     const [blogs, setBlogs] = useState<Blog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Filter State
+    // Filters
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
-    const [activeTab, setActiveTab] = useState<"all" | "draft" | "published">("all");
     const [selectedType, setSelectedType] = useState<string>("all");
-    
-    // Sort State
-    const [sortCriteria, setSortCriteria] = useState<'updated_desc' | 'updated_asc' | 'created_desc' | 'created_asc'>('updated_desc');
+    const [activeTab, setActiveTab] = useState<TabKey>("all");
+    const [sortCriteria, setSortCriteria] = useState<SortKey>("updated_desc");
 
-    // Pagination State
+    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
-    // Selection State
+    // Selection
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    // Confirmation Dialog State (Unchanged)
+    // Confirm dialog
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState<{
         title: string;
@@ -114,187 +107,192 @@ export default function Dashboard() {
         description: "",
         action: () => {},
         variant: "default",
-        confirmText: "Continue"
+        confirmText: "Continue",
     });
 
-    const navigate = useNavigate();
+    const allCategoryItems = categories?.listOfCategories ?? [];
 
-    // --- 1. Data Loading ---
+    // Load data
     useEffect(() => {
         loadBlogs();
     }, []);
 
     useEffect(() => {
         let mounted = true;
-        setCategoriesLoading(true);
         fetchCategories()
             .then((data) => {
                 if (!mounted) return;
-                setCategories(data ?? null); 
+                setCategories(data ?? null);
             })
             .catch((err) => {
                 console.error("Failed to fetch categories", err);
                 toast.error("Failed to load categories");
-            })
-            .finally(() => {
-                if (mounted) setCategoriesLoading(false);
             });
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     const loadBlogs = async () => {
         try {
-            // Assuming blogApi.list returns the object with the 'data' array
-            const response = await blogApi.list({ start: 0, stop: 1000 }); 
+            const response = await blogApi.list({ start: 0, stop: 1000 });
             setBlogs(response.data || []);
-        } catch (error) {
+        } catch {
             toast.error("Failed to load blogs");
         } finally {
             setIsLoading(false);
         }
     };
 
-    // --- 2. Sorting and Filtering Logic ---
+    // Counts
+    const counts = useMemo(() => ({
+        all: blogs.length,
+        drafts: blogs.filter((b) => b.state === "draft").length,
+        published: blogs.filter((b) => b.state === "published").length,
+    }), [blogs]);
 
+    // Filtering + sorting
     const sortedAndFilteredBlogs = useMemo(() => {
-        // 1. Apply Filtering (on the raw list)
+        const q = searchQuery.trim().toLowerCase();
         const filtered = blogs.filter((blog) => {
-            const q = searchQuery.trim().toLowerCase();
             const matchesSearch =
                 !q ||
                 blog.title.toLowerCase().includes(q) ||
-                blog._id.toLowerCase().includes(q);
-
-            // ✅ CRITICAL FIX 2: Check the single blog.category.slug directly
+                (blog.excerpt || "").toLowerCase().includes(q);
             const matchesCategory =
-                selectedCategory === "all" ||
-                blog.category?.slug === selectedCategory; 
-            
-            const matchesType = 
+                selectedCategory === "all" || blog.category?.slug === selectedCategory;
+            const matchesType =
                 selectedType === "all" || (blog.blogType || "normal") === selectedType;
             const matchesTab = activeTab === "all" || blog.state === activeTab;
             return matchesSearch && matchesCategory && matchesTab && matchesType;
         });
 
-        // 2. Apply Sorting (on the filtered list)
-        // ✅ FIX 3 (from previous review): Corrected the field check from 'lastUpdated' to 'updated'
         return filtered.sort((a, b) => {
-            const [field, direction] = sortCriteria.split('_');
-            const aValue = field === 'updated' ? a.lastUpdated : a.dateCreated;
-            const bValue = field === 'updated' ? b.lastUpdated : b.dateCreated;
-
+            const [field, direction] = sortCriteria.split("_");
+            const aValue = field === "updated" ? a.lastUpdated : a.dateCreated;
+            const bValue = field === "updated" ? b.lastUpdated : b.dateCreated;
             if (aValue === bValue) return 0;
-
-            if (direction === 'asc') {
-                return aValue < bValue ? -1 : 1;
-            } else { // 'desc'
-                return aValue > bValue ? -1 : 1;
-            }
+            return direction === "asc" ? (aValue < bValue ? -1 : 1) : aValue > bValue ? -1 : 1;
         });
     }, [blogs, searchQuery, selectedCategory, selectedType, activeTab, sortCriteria]);
 
-    // Reset page when filters/sort change (Unchanged)
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, selectedCategory, selectedType, activeTab, sortCriteria]);
+    }, [searchQuery, selectedCategory, selectedType, activeTab, sortCriteria, itemsPerPage]);
 
-    // --- 3. Pagination Logic (Unchanged) ---
-    const totalPages = Math.ceil(sortedAndFilteredBlogs.length / itemsPerPage);
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(sortedAndFilteredBlogs.length / itemsPerPage));
     const paginatedBlogs = sortedAndFilteredBlogs.slice(
         (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
+        currentPage * itemsPerPage,
     );
 
-    // --- 4. Action Handlers (Unchanged) ---
+    // Confirm helper
     const triggerConfirm = (
-        title: string, 
-        description: React.ReactNode, 
-        action: () => Promise<void> | void, 
+        title: string,
+        description: React.ReactNode,
+        action: () => Promise<void> | void,
         variant: "default" | "destructive" = "default",
-        confirmText: string = "Continue"
+        confirmText = "Continue",
     ) => {
         setConfirmConfig({ title, description, action, variant, confirmText });
         setConfirmOpen(true);
     };
 
+    // Actions
     const handleDelete = (id: string, title: string) => {
         triggerConfirm(
-            "Delete Article?",
-            <span>Are you sure you want to delete <strong>"{title}"</strong>? This action cannot be undone.</span>,
+            "Delete story?",
+            <span>
+                This permanently removes <strong>&ldquo;{title}&rdquo;</strong>. You can&apos;t undo this.
+            </span>,
             async () => {
                 try {
                     await blogApi.delete(id);
-                    toast.success("Blog deleted");
+                    toast.success("Story deleted");
                     loadBlogs();
-                    const newSelected = new Set(selectedIds);
-                    newSelected.delete(id);
-                    setSelectedIds(newSelected);
-                } catch (error) {
-                    toast.error("Failed to delete blog");
+                    setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(id);
+                        return next;
+                    });
+                } catch {
+                    toast.error("Failed to delete story");
                 }
             },
             "destructive",
-            "Delete"
+            "Delete",
         );
     };
 
-    const handleSelectOne = (id: string) => {
-        const newSelected = new Set(selectedIds);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
-        } else {
-            newSelected.add(id);
-        }
-        setSelectedIds(newSelected);
+    const toggleSelect = (id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     };
 
-    const handleSelectAll = () => {
-        if (selectedIds.size === paginatedBlogs.length && paginatedBlogs.length > 0) {
-            setSelectedIds(new Set());
-        } else {
-            const newSelected = new Set(selectedIds);
-            paginatedBlogs.forEach(blog => newSelected.add(blog._id));
-            setSelectedIds(newSelected);
-        }
+    const toggleSelectAllOnPage = () => {
+        const allOnPageSelected =
+            paginatedBlogs.length > 0 && paginatedBlogs.every((b) => selectedIds.has(b._id));
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (allOnPageSelected) {
+                paginatedBlogs.forEach((b) => next.delete(b._id));
+            } else {
+                paginatedBlogs.forEach((b) => next.add(b._id));
+            }
+            return next;
+        });
     };
 
-    const performMassAction = (action: 'delete' | 'publish' | 'draft') => {
+    const performMassAction = (action: "delete" | "publish" | "draft") => {
         if (selectedIds.size === 0) return;
-        
-        const actionText = action === 'delete' ? 'delete' : action === 'publish' ? 'publish' : 'revert to draft';
-        const variant = action === 'delete' ? 'destructive' : 'default';
-        
+        const actionText =
+            action === "delete" ? "delete" : action === "publish" ? "publish" : "revert to draft";
+        const variant = action === "delete" ? "destructive" : "default";
+
         triggerConfirm(
-            `Confirm ${action === 'delete' ? 'Deletion' : 'Update'}`,
-            <span>Are you sure you want to <strong>{actionText} {selectedIds.size}</strong> item(s)?</span>,
+            `Confirm ${action === "delete" ? "deletion" : "update"}`,
+            <span>
+                Are you sure you want to <strong>{actionText} {selectedIds.size}</strong> item
+                {selectedIds.size === 1 ? "" : "s"}?
+            </span>,
             async () => {
-                const toastId = toast.loading(`Processing ${selectedIds.size} items...`);
+                const toastId = toast.loading(`Processing ${selectedIds.size} items…`);
                 try {
                     const ids = Array.from(selectedIds);
-                    await Promise.all(ids.map(id => {
-                        if (action === 'delete') return blogApi.delete(id);
-                        if (action === 'publish') return blogApi.update(id, { state: 'published' });
-                        if (action === 'draft') return blogApi.update(id, { state: 'draft' });
-                        return Promise.resolve();
-                    }));
-
+                    await Promise.all(
+                        ids.map((id) => {
+                            if (action === "delete") return blogApi.delete(id);
+                            if (action === "publish")
+                                return blogApi.update(id, { state: "published" });
+                            if (action === "draft")
+                                return blogApi.update(id, { state: "draft" });
+                            return Promise.resolve();
+                        }),
+                    );
                     toast.dismiss(toastId);
-                    toast.success(`Successfully ${action === 'delete' ? 'deleted' : 'updated'} items`);
-                    
+                    toast.success(
+                        `${action === "delete" ? "Deleted" : "Updated"} ${ids.length} item${
+                            ids.length === 1 ? "" : "s"
+                        }`,
+                    );
                     setSelectedIds(new Set());
                     loadBlogs();
-                } catch (error) {
-                    console.error("Mass action failed:", error);
+                } catch {
                     toast.dismiss(toastId);
                     toast.error("Some operations failed. Please try again.");
                 }
             },
             variant,
-            action === 'delete' ? 'Delete All' : 'Confirm'
+            action === "delete" ? "Delete all" : "Confirm",
         );
     };
 
-    // --- 5. Render Helpers ---
+    // Helpers
     const formatDate = (timestamp: number) =>
         new Date(timestamp * 1000).toLocaleDateString("en-US", {
             year: "numeric",
@@ -302,352 +300,435 @@ export default function Dashboard() {
             day: "numeric",
         });
 
-    const renderTypeBadge = (type?: string) => {
-        if (!type || type === "normal") return null;
-        const styles: Record<string, string> = {
-            'hero section': "bg-purple-500/15 text-purple-700 hover:bg-purple-500/25 border-purple-200",
-            'featured story': "bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 border-amber-200",
-            'editors pick': "bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 border-rose-200",
-        };
-        const labels: Record<string, string> = {
-            'hero section': "Hero",
-            'featured story': "Featured",
-            'editors pick': "Editor's Pick",
-        };
-        
-        // Use the exact type string for lookup as defined in the interface and used in state.
-        return (
-            <Badge variant="outline" className={`ml-2 ${styles[type] || ""}`}>
-                {labels[type] || type}
-            </Badge>
-        );
+    const typeLabels: Record<string, string> = {
+        "hero section": "Hero",
+        "featured story": "Featured",
+        "editors pick": "Editor's pick",
     };
 
-    const renderBlogList = () => {
-        if (paginatedBlogs.length === 0) {
-            return (
-                <Card className="surface-panel shadow-none">
-                    <CardContent className="py-12 text-center">
-                        <p className="text-muted-foreground">No articles found matching your filters</p>
-                    </CardContent>
-                </Card>
-            );
-        }
+    const hasActiveFilter =
+        selectedCategory !== "all" || selectedType !== "all" || itemsPerPage !== 10;
+    const activeFilterCount =
+        (selectedCategory !== "all" ? 1 : 0) +
+        (selectedType !== "all" ? 1 : 0) +
+        (itemsPerPage !== 10 ? 1 : 0);
 
-        const allSelected = paginatedBlogs.length > 0 && paginatedBlogs.every(b => selectedIds.has(b._id));
+    const tabs: { id: TabKey; label: string; count: number }[] = [
+        { id: "all", label: "All stories", count: counts.all },
+        { id: "draft", label: "Drafts", count: counts.drafts },
+        { id: "published", label: "Published", count: counts.published },
+    ];
 
-        return (
-            <div className="space-y-4">
-                {/* Select All Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 sm:px-4 py-2 bg-secondary/20 rounded-md text-xs sm:text-sm text-muted-foreground gap-2">
-                    <div className="flex items-center gap-3">
-                        <button onClick={handleSelectAll} className="hover:text-primary transition-colors p-1">
-                            {allSelected ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
-                        </button>
-                        <span>Select All on this page</span>
-                    </div>
-                    <div className="pl-9 sm:pl-0">
-                        {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, sortedAndFilteredBlogs.length)} of {sortedAndFilteredBlogs.length}
-                    </div>
-                </div>
-
-                {paginatedBlogs.map((blog) => {
-                    const isSelected = selectedIds.has(blog._id);
-                    
-                    return (
-                            <Card 
-                                key={blog._id}
-                                className={`group overflow-hidden rounded-[1.4rem] border shadow-none transition-all duration-200 ${isSelected ? 'border-primary/40 bg-primary/5' : 'border-border/80 bg-card hover:border-primary/30 hover:bg-card'}`}
-                            >
-                                <CardContent className="p-4 sm:p-5">
-                                    <div className="flex items-start gap-3 sm:gap-4">
-                                        
-                                        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-                                            <button onClick={() => handleSelectOne(blog._id)} className="p-1 -ml-1">
-                                                {isSelected ? 
-                                                    <CheckSquare className="h-5 w-5 sm:h-5 sm:w-5 text-primary" /> : 
-                                                    <Square className="h-5 w-5 sm:h-5 sm:w-5 text-muted-foreground hover:text-primary" />
-                                                }
-                                            </button>
-                                        </div>
-
-                                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/admin/editor/${blog._id}`)}>
-                                            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                                                        <h3 className="max-w-full truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                                                            {blog.title}
-                                                        </h3>
-                                                        <div className="flex shrink-0 gap-1 origin-left scale-90 sm:scale-100">
-                                                            <Badge
-                                                                variant={blog.state === "published" ? "default" : "secondary"}
-                                                            >
-                                                                {blog.state}
-                                                            </Badge>
-                                                            {renderTypeBadge(blog.blogType)}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:gap-x-3">
-                                                        <span className="font-medium text-foreground/80">{blog.author.name}</span>
-                                                        <span>•</span>
-                                                        <span className="rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">
-                                                            {blog.category?.name ?? "Uncategorized"}
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span>{formatDate(blog.lastUpdated)}</span>
-                                                    </div>
-
-                                                    <div className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                                                        {blog.excerpt || "No excerpt provided..."}
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-2 flex gap-1 sm:mt-0 sm:flex-col sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 px-2 sm:px-3 sm:h-8 sm:w-8 sm:p-0"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            navigate(`/admin/editor/${blog._id}`);
-                                                        }}
-                                                    >
-                                                        <Edit className="h-4 w-4 sm:mr-0 mr-1" /> 
-                                                        <span className="sm:hidden text-xs">Edit</span>
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 px-2 sm:px-3 sm:h-8 sm:w-8 sm:p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDelete(blog._id, blog.title);
-                                                        }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4 sm:mr-0 mr-1" />
-                                                        <span className="sm:hidden text-xs">Delete</span>
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                    );
-                })}
-            </div>
-        );
-    };
-
-    const publishedCount = blogs.filter((blog) => blog.state === "published").length;
-    const draftCount = blogs.filter((blog) => blog.state === "draft").length;
-    const featuredCount = blogs.filter((blog) => blog.blogType && blog.blogType !== "normal").length;
+    const allOnPageSelected =
+        paginatedBlogs.length > 0 && paginatedBlogs.every((b) => selectedIds.has(b._id));
 
     return (
-        <AdminShell
-            pageTitle="Articles"
-            pageDescription="Manage drafts, published stories, and editorial placements from a single publishing workspace."
-            pageActions={
-                <Button onClick={() => navigate("/admin/editor/new")} className="rounded-full">
-                    <PlusCircle className="h-4 w-4" />
-                    New article
-                </Button>
-            }
-        >
-            <div className="space-y-6 pb-28">
-                <PageHeader
-                    title="Article operations"
-                    description="Keep publishing organized with faster filtering, cleaner row states, and a clearer split between editorial status and content metadata."
-                    actions={
-                        <Button onClick={() => navigate("/admin/editor/new")} className="rounded-full md:hidden">
-                            <PlusCircle className="h-4 w-4" />
-                            New
-                        </Button>
-                    }
-                />
+        <AdminShell pageTitle="Articles">
+            <div className="mx-auto max-w-5xl px-6 pb-28 pt-10 md:px-8 md:pt-14">
+                {/* Header */}
+                <header className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
+                    <div>
+                        <h1 className="font-display text-4xl font-semibold tracking-tight text-foreground">
+                            Your stories
+                        </h1>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            Manage drafts, published stories, and editorial placements.
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => navigate("/admin/editor/new")}
+                        className="gap-2 self-start rounded-full px-5 md:self-auto"
+                    >
+                        <Edit3 className="h-4 w-4" />
+                        Write a story
+                    </Button>
+                </header>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <StatCard label="All articles" value={blogs.length} icon={<Newspaper className="h-5 w-5" />} note="Total content in the workspace" />
-                    <StatCard label="Drafts" value={draftCount} icon={<PenSquare className="h-5 w-5" />} note="Stories waiting for review or polish" />
-                    <StatCard label="Published" value={publishedCount} icon={<Send className="h-5 w-5" />} note="Articles currently live to readers" />
-                    <StatCard label="Featured" value={featuredCount} icon={<Star className="h-5 w-5" />} note="Hero, featured, and editor's picks" />
+                {/* Tabs */}
+                <div className="mb-6 flex gap-8 border-b border-border">
+                    {tabs.map((tab) => {
+                        const active = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={cn(
+                                    "-mb-px border-b-2 pb-4 text-sm font-medium transition-colors",
+                                    active
+                                        ? "border-foreground text-foreground"
+                                        : "border-transparent text-muted-foreground hover:text-foreground",
+                                )}
+                            >
+                                {tab.label}
+                                <span
+                                    className={cn(
+                                        "ml-2 rounded-full px-2 py-0.5 text-xs",
+                                        active
+                                            ? "bg-muted text-foreground"
+                                            : "text-muted-foreground/70",
+                                    )}
+                                >
+                                    {tab.count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {isLoading ? (
-                    <div className="surface-panel flex flex-col items-center justify-center gap-4 py-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <p className="text-muted-foreground">Loading articles...</p>
+                {/* Search + Filter/Sort */}
+                <div className="mb-4 flex flex-col items-start justify-between gap-4 py-2 sm:flex-row sm:items-center">
+                    <div className="group relative w-full sm:w-80">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Search stories…"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-10 rounded-full border-transparent bg-muted/60 pl-10 pr-4 text-sm transition-colors hover:bg-muted focus-visible:border-border focus-visible:bg-background focus-visible:ring-0"
+                        />
                     </div>
-                ) : (
-                    <div className="space-y-4 sm:space-y-6">
-                        
-                        {/* FILTERS & SORT */}
-                        <div className="surface-toolbar p-3 sm:p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-                            <div className="md:col-span-5 relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full"
-                                />
-                            </div>
-                            <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder="Category" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Categories</SelectItem>
-                                        {allCategoryItems.map((cat) => (
-                                            <SelectItem key={cat.slug} value={cat.slug}>
-                                                {cat.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={selectedType} onValueChange={setSelectedType}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder="Type" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Types</SelectItem>
-                                        <SelectItem value="normal">Normal</SelectItem>
-                                        <SelectItem value="featured story">Featured</SelectItem>
-                                        <SelectItem value="hero section">Hero</SelectItem>
-                                        <SelectItem value="editors pick">Editor's Pick</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <Select value={sortCriteria} onValueChange={(v: any) => setSortCriteria(v)}>
-                                    <SelectTrigger className="w-full gap-1">
-                                        <ArrowDownWideNarrow className="h-4 w-4 text-muted-foreground" />
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="updated_desc">Last Updated (Newest)</SelectItem>
-                                        <SelectItem value="updated_asc">Last Updated (Oldest)</SelectItem>
-                                        <SelectItem value="created_desc">Date Created (Newest)</SelectItem>
-                                        <SelectItem value="created_asc">Date Created (Oldest)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <Select 
-                                    value={String(itemsPerPage)} 
-                                    onValueChange={(v) => setItemsPerPage(Number(v))}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Rows" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="5">5 per page</SelectItem>
-                                        <SelectItem value="10">10 per page</SelectItem>
-                                        <SelectItem value="20">20 per page</SelectItem>
-                                        <SelectItem value="50">50 per page</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        </div>
 
-                        {/* Tabs (Unchanged) */}
-                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                            <TabsList className="mb-4 grid w-full max-w-md grid-cols-3 rounded-full bg-secondary/70 p-1 sm:mb-6">
-                                <TabsTrigger value="all">All</TabsTrigger>
-                                <TabsTrigger value="draft">Drafts</TabsTrigger>
-                                <TabsTrigger value="published">Published</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="all" className="mt-0">
-                                {renderBlogList()}
-                            </TabsContent>
-                            <TabsContent value="draft" className="mt-0">
-                                {renderBlogList()}
-                            </TabsContent>
-                            <TabsContent value="published" className="mt-0">
-                                {renderBlogList()}
-                            </TabsContent>
-                        </Tabs>
-
-                        {/* PAGINATION CONTROLS (Unchanged) */}
-                        {sortedAndFilteredBlogs.length > 0 && (
-                            <div className="surface-toolbar flex items-center justify-between px-4 py-4">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4 sm:mr-2" /> <span className="hidden sm:inline">Previous</span>
-                                </Button>
-                                <span className="text-xs sm:text-sm text-muted-foreground">
-                                    Page {currentPage} of {totalPages}
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    <span className="hidden sm:inline">Next</span> <ChevronRight className="h-4 w-4 sm:ml-2" />
-                                </Button>
-                            </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        {selectedIds.size > 0 && (
+                            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
+                                {selectedIds.size} selected
+                            </span>
                         )}
 
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button className="flex items-center gap-1.5 transition-colors hover:text-foreground">
+                                    <Filter className="h-4 w-4" /> Filter
+                                    {activeFilterCount > 0 && (
+                                        <span className="ml-1 rounded-full bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-background">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-72 space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                                        Category
+                                    </Label>
+                                    <Select
+                                        value={selectedCategory}
+                                        onValueChange={setSelectedCategory}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All categories</SelectItem>
+                                            {allCategoryItems.map((cat) => (
+                                                <SelectItem key={cat.slug} value={cat.slug}>
+                                                    {cat.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                                        Type
+                                    </Label>
+                                    <Select value={selectedType} onValueChange={setSelectedType}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All types</SelectItem>
+                                            <SelectItem value="normal">Normal</SelectItem>
+                                            <SelectItem value="featured story">Featured</SelectItem>
+                                            <SelectItem value="hero section">Hero</SelectItem>
+                                            <SelectItem value="editors pick">
+                                                Editor&apos;s pick
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                                        Rows per page
+                                    </Label>
+                                    <Select
+                                        value={String(itemsPerPage)}
+                                        onValueChange={(v) => setItemsPerPage(Number(v))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="5">5</SelectItem>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="20">20</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {hasActiveFilter && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full"
+                                        onClick={() => {
+                                            setSelectedCategory("all");
+                                            setSelectedType("all");
+                                            setItemsPerPage(10);
+                                        }}
+                                    >
+                                        Reset filters
+                                    </Button>
+                                )}
+                            </PopoverContent>
+                        </Popover>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button className="flex items-center gap-1.5 transition-colors hover:text-foreground">
+                                    <ArrowDownUp className="h-4 w-4" /> Sort
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-60 p-1">
+                                {(Object.keys(sortLabels) as SortKey[]).map((key) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setSortCriteria(key)}
+                                        className={cn(
+                                            "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors",
+                                            sortCriteria === key
+                                                ? "bg-muted font-medium text-foreground"
+                                                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                                        )}
+                                    >
+                                        {sortLabels[key]}
+                                    </button>
+                                ))}
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+
+                {/* List */}
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
+                        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-foreground" />
+                        <p className="text-sm">Loading stories…</p>
+                    </div>
+                ) : paginatedBlogs.length === 0 ? (
+                    <div className="py-20 text-center text-sm text-muted-foreground">
+                        {blogs.length === 0
+                            ? "No stories yet. Start writing one."
+                            : "No stories match your filters."}
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        <div className="mb-2 flex items-center gap-4 border-b border-border py-3">
+                            <Checkbox
+                                checked={allOnPageSelected}
+                                onCheckedChange={toggleSelectAllOnPage}
+                                aria-label="Select all on this page"
+                            />
+                            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                Select all
+                            </span>
+                            <span className="ml-auto text-xs text-muted-foreground">
+                                {(currentPage - 1) * itemsPerPage + 1}–
+                                {Math.min(currentPage * itemsPerPage, sortedAndFilteredBlogs.length)}{" "}
+                                of {sortedAndFilteredBlogs.length}
+                            </span>
+                        </div>
+
+                        {paginatedBlogs.map((blog) => {
+                            const isSelected = selectedIds.has(blog._id);
+                            const typeLabel =
+                                blog.blogType && blog.blogType !== "normal"
+                                    ? typeLabels[blog.blogType] ?? blog.blogType
+                                    : null;
+
+                            return (
+                                <div
+                                    key={blog._id}
+                                    className="group -mx-4 flex items-start gap-4 rounded-xl border-b border-border px-4 py-6 transition-colors hover:bg-muted/40"
+                                >
+                                    <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+                                        <Checkbox
+                                            checked={isSelected}
+                                            onCheckedChange={() => toggleSelect(blog._id)}
+                                            aria-label={`Select ${blog.title}`}
+                                            className={cn(
+                                                "transition-opacity sm:opacity-100",
+                                                isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                                            )}
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/admin/editor/${blog._id}`)}
+                                        className="min-w-0 flex-1 text-left"
+                                    >
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                            {blog.state === "draft" && (
+                                                <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning">
+                                                    Draft
+                                                </span>
+                                            )}
+                                            {blog.state === "published" && (
+                                                <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-success">
+                                                    Published
+                                                </span>
+                                            )}
+                                            {typeLabel && (
+                                                <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                                    {typeLabel}
+                                                </span>
+                                            )}
+                                            <span className="text-xs text-muted-foreground">
+                                                Last edited {formatDate(blog.lastUpdated)}
+                                            </span>
+                                        </div>
+
+                                        <h2 className="mb-1 font-display text-xl font-semibold tracking-tight text-foreground decoration-muted-foreground/40 underline-offset-4 group-hover:underline sm:text-2xl">
+                                            {blog.title || "Untitled story"}
+                                        </h2>
+
+                                        <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                            {blog.excerpt || "No excerpt yet."}
+                                        </p>
+
+                                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                            {blog.author?.name && (
+                                                <span>{blog.author.name}</span>
+                                            )}
+                                            {blog.author?.name && blog.category?.name && <span>·</span>}
+                                            {blog.category?.name && (
+                                                <span className="rounded-md bg-muted px-2.5 py-1 font-medium text-foreground/80">
+                                                    {blog.category.name}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+
+                                    <div className="pt-2">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+                                                    aria-label="Actions"
+                                                >
+                                                    <MoreHorizontal className="h-5 w-5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-44">
+                                                <DropdownMenuItem
+                                                    onClick={() => navigate(`/admin/editor/${blog._id}`)}
+                                                    className="gap-2"
+                                                >
+                                                    <PenLine className="h-4 w-4" />
+                                                    Edit story
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDelete(blog._id, blog.title)}
+                                                    className="gap-2 text-destructive focus:text-destructive"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {!isLoading && sortedAndFilteredBlogs.length > 0 && (
+                    <div className="flex items-center justify-center gap-6 py-12 text-sm text-muted-foreground">
+                        <button
+                            className="transition-colors hover:text-foreground disabled:opacity-50"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Previous
+                        </button>
+                        <span className="tabular-nums">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            className="transition-colors hover:text-foreground disabled:opacity-50"
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage >= totalPages}
+                        >
+                            Next
+                        </button>
                     </div>
                 )}
             </div>
 
-            {/* MASS ACTIONS FLOATING BAR (Unchanged) */}
+            {/* Mass actions floating bar */}
             {selectedIds.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[95%] sm:w-[90%] max-w-2xl animate-in slide-in-from-bottom-10 fade-in">
-                        <div className="flex items-center justify-between rounded-[1.35rem] border border-border bg-card p-3 text-card-foreground shadow-[0_16px_38px_rgba(15,23,42,0.12)] sm:p-4">
-                            <div className="flex items-center gap-2 sm:gap-4">
-                                <Badge variant="secondary" className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
-                                    {selectedIds.size} <span className="hidden sm:inline ml-1">Selected</span>
-                                </Badge>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())} className="text-xs h-8 px-2">
-                                    Clear
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                                <Button 
-                                    size="sm" 
-                                    variant="destructive" 
-                                    onClick={() => performMassAction('delete')}
-                                    className="gap-1 px-2 sm:px-4"
-                                    title="Delete Selected"
-                                >
-                                    <Trash2 className="h-4 w-4" /> 
-                                    <span className="hidden sm:inline ml-1">Delete</span>
-                                </Button>
-                                <div className="h-4 w-[1px] bg-border mx-1"></div>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => performMassAction('draft')}
-                                    className="gap-1 px-2 sm:px-4"
-                                    title="Revert to Draft"
-                                >
-                                    <FileEdit className="h-4 w-4" /> 
-                                    <span className="hidden sm:inline ml-1">To Draft</span>
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    onClick={() => performMassAction('publish')}
-                                    className="gap-1 px-2 sm:px-4"
-                                    title="Publish Selected"
-                                >
-                                    <UploadCloud className="h-4 w-4" /> 
-                                    <span className="hidden sm:inline ml-1">Publish</span>
-                                </Button>
-                            </div>
+                <div className="fixed bottom-6 left-1/2 z-40 w-[95%] max-w-2xl -translate-x-1/2 animate-in fade-in slide-in-from-bottom-10">
+                    <div className="flex items-center justify-between gap-2 rounded-full border border-border bg-card px-4 py-2.5 shadow-lg">
+                        <div className="flex items-center gap-3 text-sm">
+                            <span className="font-medium">{selectedIds.size} selected</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedIds(new Set())}
+                                className="h-8 px-2 text-muted-foreground"
+                            >
+                                Clear
+                            </Button>
                         </div>
+                        <div className="flex items-center gap-1.5">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => performMassAction("draft")}
+                                className="gap-1.5 rounded-full"
+                            >
+                                <FileEdit className="h-4 w-4" />
+                                <span className="hidden sm:inline">To draft</span>
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={() => performMassAction("publish")}
+                                className="gap-1.5 rounded-full"
+                            >
+                                <UploadCloud className="h-4 w-4" />
+                                <span className="hidden sm:inline">Publish</span>
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => performMassAction("delete")}
+                                className="gap-1.5 rounded-full"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="hidden sm:inline">Delete</span>
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* SHADCN ALERT DIALOG IMPLEMENTATION (Unchanged) */}
+            {/* Confirm dialog */}
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
-                            {confirmConfig.variant === 'destructive' && <AlertTriangle className="h-5 w-5 text-destructive" />}
+                            {confirmConfig.variant === "destructive" && (
+                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                            )}
                             {confirmConfig.title}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
@@ -656,19 +737,24 @@ export default function Dashboard() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogAction
                             onClick={(e) => {
                                 e.preventDefault();
-                                Promise.resolve(confirmConfig.action()).then(() => setConfirmOpen(false));
+                                Promise.resolve(confirmConfig.action()).then(() =>
+                                    setConfirmOpen(false),
+                                );
                             }}
-                            className={confirmConfig.variant === "destructive" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+                            className={
+                                confirmConfig.variant === "destructive"
+                                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    : ""
+                            }
                         >
                             {confirmConfig.confirmText}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
         </AdminShell>
     );
 }

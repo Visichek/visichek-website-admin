@@ -25,7 +25,6 @@ import useCategories from "@/hooks/useCategories";
 import type { PartialBlock } from "@blocknote/core";
 import { MediaUploaderModal } from "@/components/MediaUploaderWithCaptionComponent";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { PageHeader } from "@/components/admin/PageHeader";
 
 type BlockNoteDocument = PartialBlock<any>[];
 
@@ -299,14 +298,32 @@ export default function Editor() {
 
     return (
         <AdminShell
-            pageTitle={isNew ? "New article" : "Editor"}
-            pageDescription="Write, refine, and publish stories inside the same editorial workspace as the rest of the admin."
+            variant="focus"
+            pageTitle={title || (isNew ? "Untitled story" : "Editorial draft")}
             pageActions={
                 <>
-                    <MediaUploaderModal 
-                        onUploadSuccess={() => window.location.reload()} 
-                        mediaId={articleId} 
-                        label="Add Media"
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate("/admin")}
+                        className="gap-2"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                    </Button>
+                    <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+                        <StatusIndicator className="h-3 w-3" />
+                        {saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving…' : 'Error'}
+                    </div>
+                    <Badge
+                        variant={status === "published" ? "default" : "secondary"}
+                        className="rounded-full px-3 py-1 capitalize"
+                    >
+                        {status}
+                    </Badge>
+                    <MediaUploaderModal
+                        onUploadSuccess={() => window.location.reload()}
+                        mediaId={articleId}
+                        label="Media"
                         variant="ghost"
                     />
                     <BlogSettingsDialog
@@ -325,7 +342,7 @@ export default function Editor() {
                     />
                     {status === "draft" ? (
                         <Button onClick={handlePublish} className="gap-2 rounded-full px-5">
-                            Publish <Send className="w-4 h-4" /> 
+                            Publish <Send className="w-4 h-4" />
                         </Button>
                     ) : (
                         <Button variant="outline" onClick={handleUnpublish} className="rounded-full">
@@ -334,75 +351,51 @@ export default function Editor() {
                     )}
                 </>
             }
-            contentClassName="pb-24"
+            contentClassName="pb-32"
         >
-            <div className="mx-auto max-w-5xl space-y-6">
-                <PageHeader
-                    title={title || (isNew ? "Untitled story" : "Editorial draft")}
-                    description="Use the editor below to build the story body, update metadata, and keep publishing status in sync."
-                    actions={
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" onClick={() => navigate("/admin")} className="rounded-full">
-                                <ArrowLeft className="h-4 w-4" />
-                                Back
-                            </Button>
-                            <Badge variant={status === "published" ? "default" : "secondary"} className="rounded-full px-3 py-1">
-                                {status}
-                            </Badge>
-                            <div className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
-                                <StatusIndicator className="h-3 w-3" />
-                                {saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving...' : 'Error'}
-                            </div>
-                        </div>
-                    }
+            <div className="medium-canvas pt-10 sm:pt-16">
+                <Input
+                    placeholder="Title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="font-display text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight border-none px-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/30 h-auto py-2 w-full"
                 />
 
-                <div className="surface-panel space-y-6 p-5 sm:p-8">
-                    <div className="relative group px-14">
-                        <Input
-                            placeholder="Article Title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight border-none px-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/30 h-auto py-2 w-full"
-                        />
-                    </div>
+                <div className="flex flex-wrap items-center gap-3 py-4 text-sm text-muted-foreground">
+                    {category && (
+                        <button
+                            type="button"
+                            onClick={() => setIsCategoryDialogOpen(true)}
+                            className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <Badge variant="secondary" className="cursor-pointer rounded-sm font-normal hover:bg-secondary/80">
+                                {category.name}
+                            </Badge>
+                        </button>
+                    )}
+                    {authorName && <span>by {authorName}</span>}
+                </div>
 
-                    <div className="flex px-14 items-center gap-3 text-sm text-muted-foreground pb-2">
-                        {category && (
-                            <button
-                                type="button"
-                                onClick={() => setIsCategoryDialogOpen(true)}
-                                className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            >
-                                <Badge variant="secondary" className="cursor-pointer rounded-sm font-normal hover:bg-secondary/80">
-                                    {category.name}
-                                </Badge>
-                            </button>
-                        )}
-                        {authorName && <span>by {authorName}</span>}
-                    </div>
-
-                    <div className="min-h-[50vh] animate-in fade-in duration-500">
-                        {hasLoadedContent || isNew ? (
-                            <div className="not-prose -mx-4 sm:mx-0"> 
-                                <BlockNoteEditor
-                                    key={articleId || "new"}
-                                    initialContent={blogBlocks}
-                                    onChange={setBlogBlocks}
-                                />
-                            </div>
-                        ) : isLoading ? (
-                            <div className="h-[50vh] flex flex-col items-center justify-center text-muted-foreground gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-                                <p className="text-sm">Loading editor...</p>
-                            </div>
-                        ) : (
-                            <div className="h-[50vh] flex flex-col items-center justify-center text-muted-foreground gap-3">
-                                <FileText className="h-10 w-10 opacity-20" />
-                                <p>Ready to write</p>
-                            </div>
-                        )}
-                    </div>
+                <div className="min-h-[60vh] animate-in fade-in duration-500">
+                    {hasLoadedContent || isNew ? (
+                        <div className="not-prose -mx-4 sm:-mx-6">
+                            <BlockNoteEditor
+                                key={articleId || "new"}
+                                initialContent={blogBlocks}
+                                onChange={setBlogBlocks}
+                            />
+                        </div>
+                    ) : isLoading ? (
+                        <div className="h-[50vh] flex flex-col items-center justify-center text-muted-foreground gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+                            <p className="text-sm">Loading editor...</p>
+                        </div>
+                    ) : (
+                        <div className="h-[50vh] flex flex-col items-center justify-center text-muted-foreground gap-3">
+                            <FileText className="h-10 w-10 opacity-20" />
+                            <p>Ready to write</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
